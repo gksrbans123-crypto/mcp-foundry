@@ -48,7 +48,10 @@ DATABASE_URL="postgresql://postgres.<ref>:<PW>@aws-0-<region>.pooler.supabase.co
   PUBLIC_BASE_URL=https://<backend-host>          # 배포 후 채움
   DASHBOARD_PUBLIC_URL=https://<vercel-app>.vercel.app
   ANTHROPIC_API_KEY=sk-ant-...
-  EGRESS_ALLOWLIST=api.open-meteo.com,en.wikipedia.org,api.frankfurter.app
+  # EGRESS_ALLOWLIST 는 생략 가능(기본 = 전체 허용). 생성된 서버가 어떤 공개
+  # 호스트든 호출할 수 있게 하려면 설정하지 않는다. 특정 호스트로 제한하려면
+  # 쉼표 목록으로 지정: EGRESS_ALLOWLIST=api.open-meteo.com,en.wikipedia.org
+  # (내부 IP/메타데이터 주소는 이 값과 무관하게 SSRF 가드가 항상 차단)
   ```
   (`PORT`는 플랫폼이 자동 주입 → `deploy/all-in-one/start.mjs`가 읽음)
 

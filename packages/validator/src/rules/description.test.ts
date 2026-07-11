@@ -4,7 +4,7 @@ import { makeValidSpec } from "../test-support.js";
 import { checkDescriptions } from "./description.js";
 
 describe("checkDescriptions", () => {
-  it("passes a spec whose descriptions mention SERVICE_NAME and stay in English", () => {
+  it("passes a spec whose descriptions mention SERVICE_NAME", () => {
     expect(checkDescriptions(makeValidSpec())).toEqual([]);
   });
 
@@ -34,12 +34,10 @@ describe("checkDescriptions", () => {
     );
   });
 
-  it("flags a description that is mostly non-English after stripping SERVICE_NAME", () => {
+  it("accepts a fully Korean description (Kakao PlayMCP is a Korean-facing product)", () => {
     const violations = checkDescriptions(
       makeValidSpec({ server: { description: `${SERVICE_NAME} 위젯을 조회하는 서버입니다 매우 유용한 도구입니다` } }),
     );
-    const languageViolation = violations.find((v) => v.message.includes("primarily English"));
-    expect(languageViolation).toBeDefined();
-    expect(languageViolation?.hint).toMatch(/English/);
+    expect(violations).toEqual([]);
   });
 });

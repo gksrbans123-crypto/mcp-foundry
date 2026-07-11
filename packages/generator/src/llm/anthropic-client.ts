@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { LLMClient } from "./types.js";
 
-const DEFAULT_MODEL = "claude-fable-5";
+const DEFAULT_MODEL = "claude-opus-4-8";
 const MAX_TOKENS = 4096;
 
 /** Production LLMClient. Never imported by tests — see MockLLMClient. */

@@ -32,10 +32,12 @@ const SPEC_STORE_DIR = process.env.SPEC_STORE_DIR ?? "/data/specs";
 // SERVE_DASHBOARD=0 to force it off even when built.
 const DASHBOARD_ENABLED = process.env.SERVE_DASHBOARD !== "0" && existsSync("apps/dashboard/.next");
 
-// Hosts the built-in generator templates (weather/search/currency) call. Used
-// as the default EGRESS_ALLOWLIST so a template-only demo works out of the box;
-// override EGRESS_ALLOWLIST to broaden/narrow what generated servers may reach.
-const DEFAULT_EGRESS = "api.open-meteo.com,en.wikipedia.org,api.frankfurter.app";
+// EGRESS_ALLOWLIST defaults to empty = no extra host restriction, so a
+// generated server may reach ANY public host its spec declares (LLM-inferred
+// servers work out of the box, not just the weather/search/currency templates).
+// The SSRF / private-IP / DNS-rebinding guards in each service still block
+// internal/metadata addresses regardless. Set EGRESS_ALLOWLIST to a
+// comma-separated host list to re-narrow what generated servers may reach.
 
 // Fail fast on the two values that have no safe default.
 function requireEnv() {
@@ -67,7 +69,7 @@ const childEnv = {
   // Required by the shared env schema (loadEnv). A placeholder lets the
   // template-only path run; real NL->spec generation needs a genuine key.
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "set-me-for-llm-generation",
-  EGRESS_ALLOWLIST: process.env.EGRESS_ALLOWLIST || DEFAULT_EGRESS,
+  EGRESS_ALLOWLIST: process.env.EGRESS_ALLOWLIST ?? "",
   NODE_ENV: "production",
 };
 

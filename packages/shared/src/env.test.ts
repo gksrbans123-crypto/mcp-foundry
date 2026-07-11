@@ -15,7 +15,7 @@ describe("loadEnv", () => {
     expect(env.CREATOR_PORT).toBe(3001);
     expect(env.RUNTIME_PORT).toBe(3002);
     expect(env.DASHBOARD_PORT).toBe(3000);
-    expect(env.GENERATOR_MODEL).toBe("claude-fable-5");
+    expect(env.GENERATOR_MODEL).toBe("claude-opus-4-8");
   });
 
   it("throws a descriptive error listing every missing required variable", () => {
@@ -24,6 +24,11 @@ describe("loadEnv", () => {
 
   it("rejects an invalid PUBLIC_BASE_URL", () => {
     expect(() => loadEnv({ ...validEnv, PUBLIC_BASE_URL: "not-a-url" })).toThrow();
+  });
+
+  it("defaults EGRESS_ALLOWLIST to an empty string (no extra egress restriction) when omitted", () => {
+    const { EGRESS_ALLOWLIST: _omitted, ...withoutAllowlist } = validEnv;
+    expect(loadEnv(withoutAllowlist).EGRESS_ALLOWLIST).toBe("");
   });
 
   it("rejects an OWNER_TOKEN_SECRET shorter than 32 characters", () => {

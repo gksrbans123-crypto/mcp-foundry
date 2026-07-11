@@ -11,8 +11,13 @@ const envSchema = z.object({
   CREATOR_PORT: z.coerce.number().int().positive().default(3001),
   RUNTIME_PORT: z.coerce.number().int().positive().default(3002),
   DASHBOARD_PORT: z.coerce.number().int().positive().default(3000),
-  GENERATOR_MODEL: z.string().min(1).default("claude-fable-5"),
-  EGRESS_ALLOWLIST: z.string().min(1, "EGRESS_ALLOWLIST is required"),
+  GENERATOR_MODEL: z.string().min(1).default("claude-opus-4-8"),
+  // Optional process-wide egress allowlist (comma-separated hostnames). Empty
+  // (the default) means "no extra restriction beyond each spec's own declared
+  // hosts" — any public host a generated spec targets is reachable, while the
+  // SSRF / private-IP / DNS-rebinding guards in each service's guarded-fetch
+  // still block internal/metadata addresses regardless of this list.
+  EGRESS_ALLOWLIST: z.string().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

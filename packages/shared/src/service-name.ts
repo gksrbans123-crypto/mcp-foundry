@@ -5,4 +5,4 @@
  * rather than hardcoding the string, so a future rename only touches one
  * file and stays auditable against the forbidden-substring check below.
  */
-export const SERVICE_NAME = "MCP Foundry(엠씨피 파운드리)";
+export const SERVICE_NAME = "MCP-Creator(엠씨피 크리에이터)";

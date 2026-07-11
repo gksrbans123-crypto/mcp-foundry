@@ -33,7 +33,7 @@ function registerTool(server: McpServer, name: ToolName, inputShape: ZodRawShape
 
 /** Builds a fresh McpServer with all 7 tools (plan §3) bound to this request's authenticated ToolContext. */
 export function createCreatorMcpServer(ctx: ToolContext): McpServer {
-  const server = new McpServer({ name: "mcp-foundry-creator", version: "0.1.0" });
+  const server = new McpServer({ name: "mcp-creator", version: "0.1.0" });
 
   registerTool(server, "create_mcp_server", createMcpServerInputShape, createCreateMcpServerHandler(ctx));
   registerTool(server, "get_job_status", getJobStatusInputShape, createGetJobStatusHandler(ctx));

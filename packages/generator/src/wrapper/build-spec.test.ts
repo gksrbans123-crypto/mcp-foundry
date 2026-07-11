@@ -1,3 +1,4 @@
+import { SERVICE_NAME } from "@mcp-foundry/shared";
 import { loadServerSpec } from "@mcp-foundry/spec";
 import { describe, expect, it } from "vitest";
 import type { EndpointDescriptor } from "../types.js";
@@ -86,7 +87,7 @@ describe("buildHttpWrapperSpec", () => {
 
   it("always includes an intact SERVICE_NAME mention in both descriptions", () => {
     const spec = buildHttpWrapperSpec(GET_DESCRIPTOR, { nl: "x" });
-    expect(spec.description).toContain("MCP Foundry");
-    expect(spec.tools[0]!.description).toContain("MCP Foundry");
+    expect(spec.description).toContain(SERVICE_NAME);
+    expect(spec.tools[0]!.description).toContain(SERVICE_NAME);
   });
 });
