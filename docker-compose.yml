@@ -1,0 +1,142 @@
+# Full local stack for MCP Foundry (엠씨피 파운드리).
+#
+# ⚠️ Local/demo only. The default Postgres credentials and secrets below are
+# NOT safe for any shared or internet-reachable environment. For a real
+# deployment, supply DATABASE_URL / OWNER_TOKEN_SECRET / ANTHROPIC_API_KEY via
+# your platform's secret manager and publish the services behind HTTPS.
+#
+# Usage:
+#   cp .env.example .env         # optional — overrides the defaults below
+#   docker compose up --build    # builds images, migrates, starts everything
+#
+# To run only Postgres (e.g. for `pnpm test` / `pnpm e2e-smoke` on the host):
+#   docker compose up -d postgres
+#
+# Ports (host): dashboard 3000, creator-mcp 3001, runtime-host 3002.
+# The worker has no inbound port. worker + runtime-host share the spec_store
+# volume (worker writes {slug}.json, runtime-host serves it).
+
+x-postgres-url: &postgres-url postgres://mcp_foundry:mcp_foundry@postgres:5432/mcp_foundry
+
+# Shared env schema (packages/shared loadEnv) requires all five of these in any
+# service that calls it — creator-mcp and worker do. Defaults below are for a
+# local template-only demo; override via .env for real generation/production.
+x-app-env: &app-env
+  DATABASE_URL: *postgres-url
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-set-me-for-llm-generation}
+  OWNER_TOKEN_SECRET: ${OWNER_TOKEN_SECRET:-local-dev-owner-token-secret-change-me-32b}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3002}
+  EGRESS_ALLOWLIST: ${EGRESS_ALLOWLIST:-api.open-meteo.com,en.wikipedia.org,api.frankfurter.app}
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mcp_foundry
+      POSTGRES_PASSWORD: mcp_foundry
+      POSTGRES_DB: mcp_foundry
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - mcp_foundry_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mcp_foundry -d mcp_foundry"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: applies packages/db migrations, then exits. Reuses the worker
+  # image's builder stage (it has tsx + the migrations SQL + the db package).
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      target: builder
+    command: ["pnpm", "--filter=@mcp-foundry/db", "db:migrate"]
+    environment:
+      DATABASE_URL: *postgres-url
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  creator-mcp:
+    build:
+      context: .
+      dockerfile: apps/creator-mcp/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      <<: *app-env
+      CREATOR_PORT: "3001"
+      DASHBOARD_PUBLIC_URL: ${DASHBOARD_PUBLIC_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  runtime-host:
+    build:
+      context: .
+      dockerfile: apps/runtime-host/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      # runtime-host uses its own config loader (not shared loadEnv), so it only
+      # needs these four. EGRESS_ALLOWLIST bounds what generated servers may
+      # reach — defaults to the built-in template upstreams.
+      DATABASE_URL: *postgres-url
+      RUNTIME_PORT: "3002"
+      SPEC_STORE_DIR: /data/specs
+      EGRESS_ALLOWLIST: ${EGRESS_ALLOWLIST:-api.open-meteo.com,en.wikipedia.org,api.frankfurter.app}
+    volumes:
+      - spec_store:/data/specs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      # Inherits the shared required env (DATABASE_URL, ANTHROPIC_API_KEY,
+      # OWNER_TOKEN_SECRET, PUBLIC_BASE_URL, EGRESS_ALLOWLIST). PUBLIC_BASE_URL
+      # must point at runtime-host's published port as seen by the MCP client.
+      <<: *app-env
+      GENERATOR_MODEL: ${GENERATOR_MODEL:-claude-fable-5}
+      SPEC_STORE_DIR: /data/specs
+    volumes:
+      - spec_store:/data/specs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: *postgres-url
+      DASHBOARD_PORT: "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  mcp_foundry_postgres_data:
+  spec_store:

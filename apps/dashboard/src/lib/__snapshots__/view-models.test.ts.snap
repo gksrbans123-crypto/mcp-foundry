@@ -1,0 +1,96 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildFilterCounts (mock data snapshot) > counts every filter tab consistently against the mock fixtures 1`] = `
+[
+  {
+    "count": 5,
+    "filter": "all",
+    "label": "전체",
+  },
+  {
+    "count": 1,
+    "filter": "active",
+    "label": "활성",
+  },
+  {
+    "count": 1,
+    "filter": "disabled",
+    "label": "비활성",
+  },
+  {
+    "count": 1,
+    "filter": "building",
+    "label": "진행중",
+  },
+  {
+    "count": 1,
+    "filter": "failed",
+    "label": "실패",
+  },
+  {
+    "count": 1,
+    "filter": "deleted",
+    "label": "삭제",
+  },
+]
+`;
+
+exports[`toServerCardViewModel (mock data snapshot) > renders a stable view model per mock server 1`] = `
+[
+  {
+    "id": "server_demo_active",
+    "name": "날씨 알리미",
+    "probeSummary": "통과 (최대 1180ms, 20회 측정)",
+    "publicUrl": "https://mcp-foundry.example.com/s/weather-buddy/mcp",
+    "slug": "weather-buddy",
+    "status": "active",
+    "statusLabel": "활성",
+    "toolCount": 2,
+    "updatedAtLabel": "2026-06-02 01:05",
+  },
+  {
+    "id": "server_demo_building",
+    "name": "뉴스 브리핑",
+    "probeSummary": null,
+    "publicUrl": null,
+    "slug": "news-brief",
+    "status": "building",
+    "statusLabel": "진행중",
+    "toolCount": 1,
+    "updatedAtLabel": "2026-06-03 04:22",
+  },
+  {
+    "id": "server_demo_failed",
+    "name": "환율 계산기",
+    "probeSummary": "실패 (최대 2500ms, 20회 측정)",
+    "publicUrl": null,
+    "slug": "fx-calc",
+    "status": "failed",
+    "statusLabel": "실패",
+    "toolCount": 1,
+    "updatedAtLabel": "2026-06-01 11:10",
+  },
+  {
+    "id": "server_demo_deleted",
+    "name": "옛날 메모 서버",
+    "probeSummary": "통과 (최대 1180ms, 20회 측정)",
+    "publicUrl": null,
+    "slug": "old-memo",
+    "status": "deleted",
+    "statusLabel": "삭제",
+    "toolCount": 1,
+    "updatedAtLabel": "2026-05-25 02:00",
+  },
+  {
+    "id": "server_demo_disabled",
+    "name": "지하철 도착 알리미",
+    "probeSummary": "통과 (최대 1320ms, 20회 측정)",
+    "publicUrl": "https://demo.example/s/subway-arrival/mcp",
+    "slug": "subway-arrival",
+    "status": "disabled",
+    "statusLabel": "비활성",
+    "toolCount": 1,
+    "updatedAtLabel": "2026-06-03 04:30",
+  },
+]
+`;

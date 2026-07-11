@@ -1,0 +1,28 @@
+{
+  "name": "mcp-foundry",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev",
+    "e2e-smoke": "tsx scripts/e2e-smoke.ts"
+  },
+  "dependencies": {
+    "@mcp-foundry/validator": "workspace:*",
+    "@modelcontextprotocol/inspector": "0.22.0",
+    "@modelcontextprotocol/sdk": "1.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.0",
+    "turbo": "^2.10.4",
+    "typescript": "^7.0.2"
+  }
+}

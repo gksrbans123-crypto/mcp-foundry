@@ -1,0 +1,32 @@
+{
+  "name": "@mcp-foundry/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mcp-foundry/db": "workspace:*",
+    "@mcp-foundry/generator": "workspace:*",
+    "@mcp-foundry/shared": "workspace:*",
+    "@mcp-foundry/spec": "workspace:*",
+    "@mcp-foundry/validator": "workspace:*",
+    "@modelcontextprotocol/inspector": "0.22.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "express": "^5.2.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

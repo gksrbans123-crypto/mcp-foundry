@@ -1,0 +1,35 @@
+# Keep the Docker build context small and never leak local artifacts/secrets.
+# Build stages run `pnpm install` from the lockfile, so committed node_modules,
+# build outputs, and env files must not enter the image.
+
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+.turbo
+.git
+.gitignore
+
+# Local env / secrets — images get their config via runtime env, never baked in.
+.env
+.env.*
+!.env.example
+
+# Local runtime data (shared spec store, postgres volume mounts, etc.)
+data
+**/data
+
+# Dev tooling & docs not needed at build time
+.omc
+docs
+scripts/spike
+scripts/e2e
+**/*.log
+**/*.test.ts
+**/*.test.tsx
+**/vitest.config.ts
+Dockerfile
+**/Dockerfile
+.dockerignore
+docker-compose.yml
+README.md
