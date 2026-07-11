@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AutoRefresh } from "../../components/AutoRefresh";
 import { DemoBadge } from "../../components/DemoBadge";
 import { ServerCard } from "../../components/ServerCard";
 import { StatusFilterTabs } from "../../components/StatusFilterTabs";
@@ -61,6 +62,9 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
           <span>인증 토큰</span>
           <span className="owner-token-value">{maskOwnerToken(token)}</span>
           {context.source === "mock" && <DemoBadge />}
+          {context.source !== "mock" && (
+            <AutoRefresh active={context.servers.some((server) => server.status === "building")} />
+          )}
         </div>
       </div>
 

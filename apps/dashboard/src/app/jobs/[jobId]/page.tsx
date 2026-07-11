@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DemoBadge } from "../../../components/DemoBadge";
 import { JobTimeline } from "../../../components/JobTimeline";
 import { TokenSessionBridge } from "../../../components/TokenSessionBridge";
+import { AutoRefresh } from "../../../components/AutoRefresh";
 import { Pipeline } from "../../../components/Pipeline";
 import { loadJobContext } from "../../../lib/job-context";
 import { derivePipeline } from "../../../lib/pipeline";
@@ -69,6 +70,9 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
           </span>
           <span>시도 {job.attempts}회</span>
           {context.source === "mock" && <DemoBadge />}
+          {context.source !== "mock" && (
+            <AutoRefresh active={job.stage !== "active" && job.stage !== "failed"} />
+          )}
         </div>
       </div>
 
