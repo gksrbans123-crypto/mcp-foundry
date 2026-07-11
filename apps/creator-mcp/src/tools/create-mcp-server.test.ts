@@ -20,7 +20,7 @@ function buildCtx(overrides: Partial<ToolContext> = {}): ToolContext {
 }
 
 function extractJobId(markdown: string): string {
-  const match = markdown.match(/\*\*Job ID:\*\* `([^`]+)`/);
+  const match = markdown.match(/\*\*작업 ID:\*\* `([^`]+)`/);
   if (!match) throw new Error(`no Job ID found in response markdown: ${markdown}`);
   return match[1]!;
 }
@@ -34,7 +34,7 @@ describe("create_mcp_server handler", () => {
     const text = result.content[0].text;
 
     expect(result.isError).toBeUndefined();
-    expect(text).toMatch(/Job queued/);
+    expect(text).toMatch(/만들고 있어요/);
     expect(text).toContain("http://localhost:3000/jobs/");
     expect(text).toContain("http://localhost:3000/servers?token=test-token");
     expect(text).toMatch(/get_job_status/);

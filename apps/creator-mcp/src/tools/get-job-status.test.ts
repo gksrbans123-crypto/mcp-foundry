@@ -18,9 +18,23 @@ function buildCtx(): { ctx: ToolContext; repos: MemoryRepos } {
 }
 
 describe("get_job_status handler", () => {
-  it("exposes the job's server_id so a caller can chain into get_server_details/refine/delete", async () => {
+  it("surfaces the live endpoint, server id, and connection guide once the job is active", async () => {
     const { ctx, repos } = buildCtx();
     const now = new Date().toISOString();
+    repos.seedServer({
+      id: "server-1",
+      userId: "user-1",
+      name: "Weather",
+      slug: "weather-x",
+      publicUrl: "https://host.example/s/weather-x/mcp",
+      mcpVersion: "2025-06-18",
+      tools: [],
+      status: "active",
+      probeResult: null,
+      deployRef: null,
+      createdAt: now,
+      updatedAt: now,
+    });
     repos.seedJob({
       id: "job-1",
       userId: "user-1",
@@ -41,12 +55,15 @@ describe("get_job_status handler", () => {
     const handler = createGetJobStatusHandler(ctx);
 
     const result = await handler({ job_id: "job-1" });
+    const text = result.content[0].text;
 
     expect(result.isError).toBeUndefined();
-    expect(result.content[0].text).toContain("**Server ID:** `server-1`");
+    expect(text).toContain("`server-1`");
+    expect(text).toContain("https://host.example/s/weather-x/mcp");
+    expect(text).toContain("claude mcp add");
   });
 
-  it("renders 'none yet' when the job has no server_id (still generating)", async () => {
+  it("shows a friendly in-progress message while still generating", async () => {
     const { ctx, repos } = buildCtx();
     const now = new Date().toISOString();
     repos.seedJob({
@@ -70,7 +87,7 @@ describe("get_job_status handler", () => {
 
     const result = await handler({ job_id: "job-2" });
 
-    expect(result.content[0].text).toContain("**Server ID:** _none yet_");
+    expect(result.content[0].text).toContain("만드는 중");
   });
 
   it("returns not-found for a job owned by a different user", async () => {

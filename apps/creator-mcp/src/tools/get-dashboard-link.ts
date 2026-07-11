@@ -28,6 +28,6 @@ export function createGetDashboardLinkHandler(ctx: ToolContext) {
       ? buildServerDetailUrl(ctx.dashboardBaseUrl, ctx.token, ownedServerId)
       : buildServersUrl(ctx.dashboardBaseUrl, ctx.token);
 
-    return textResult(`### Dashboard\n\n${url}`, { ctx });
+    return textResult(`### 대시보드\n\n내 MCP 서버와 빌드 진행 상황을 웹에서 확인하세요:\n\n${url}`, { ctx });
   };
 }

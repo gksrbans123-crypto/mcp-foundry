@@ -40,13 +40,16 @@ export function createCreateMcpServerHandler(ctx: ToolContext) {
 
     return textResult(
       [
-        "### Job queued",
+        "### 🛠️ MCP 서버를 만들고 있어요!",
         "",
-        `- **Job ID:** \`${job.id}\``,
-        `- **Status URL:** ${buildJobStatusUrl(ctx.dashboardBaseUrl, ctx.token, job.id)}`,
-        `- **Dashboard:** ${buildServersUrl(ctx.dashboardBaseUrl, ctx.token)}`,
+        "요청하신 서버의 **Streamable HTTP MCP 엔드포인트**를 생성하는 중입니다.",
+        "스펙 생성 → MCP 표준 검증(Inspector) → 응답속도 측정 → 공개 URL 배포까지 보통 **20~30초** 걸려요.",
         "",
-        "Use `get_job_status` with this job id to track progress.",
+        `- **작업 ID:** \`${job.id}\``,
+        `- **진행 상황(웹 대시보드):** ${buildJobStatusUrl(ctx.dashboardBaseUrl, ctx.token, job.id)}`,
+        `- **내 서버 목록:** ${buildServersUrl(ctx.dashboardBaseUrl, ctx.token)}`,
+        "",
+        `잠시 뒤 \`get_job_status\`(작업 ID \`${job.id}\`)를 호출하면 **바로 연결해서 쓸 수 있는 공개 URL**을 알려드려요.`,
       ].join("\n"),
       { ctx },
     );

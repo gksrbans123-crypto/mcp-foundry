@@ -58,7 +58,7 @@ describe("MCP round trip over Streamable HTTP (stateless)", () => {
     expect(result.isError).toBeFalsy();
     const content = result.content as Array<{ type: string; text?: string }>;
     expect(content[0]?.type).toBe("text");
-    expect(content[0]?.text).toContain("Dashboard");
+    expect(content[0]?.text).toContain("대시보드");
 
     await client.close();
   });
@@ -86,7 +86,7 @@ describe("MCP round trip over Streamable HTTP (stateless)", () => {
     });
     expect(result.isError).toBeFalsy();
     const content = result.content as Array<{ type: string; text?: string }>;
-    expect(content[0]?.text).toMatch(/Job queued/);
+    expect(content[0]?.text).toMatch(/만들고 있어요/);
 
     await client.close();
   });

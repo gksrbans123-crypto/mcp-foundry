@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { notFoundMarkdown, rateLimitExceededMarkdown } from "../markdown.js";
+import { connectionGuideKo } from "./friendly.js";
 import { textResult, type ToolContext, type ToolTextResult } from "./context.js";
 
 export const getServerDetailsInputShape = {
@@ -25,17 +26,18 @@ export function createGetServerDetailsHandler(ctx: ToolContext) {
       ? `${server.probeResult.passed ? "passed" : "failed"} (max ${server.probeResult.maxLatencyMs}ms over ${server.probeResult.sampleCount} samples)`
       : "_not yet run_";
 
+    const isLive = server.status === "active" && Boolean(server.publicUrl);
     return textResult(
       [
-        `### Server: ${server.name} (\`${server.slug}\`)`,
+        `### ${server.name} (\`${server.slug}\`)`,
         "",
-        `- **Status:** ${server.status}`,
-        `- **Public URL:** ${server.publicUrl ?? "_pending_"}`,
-        `- **MCP Version:** ${server.mcpVersion}`,
-        `- **Tools:** ${toolNames}`,
-        `- **Probe:** ${probe}`,
-        `- **Deploy ref:** ${server.deployRef ?? "_none_"}`,
-        `- **Updated:** ${server.updatedAt}`,
+        `- **상태:** ${server.status}`,
+        `- **공개 MCP 엔드포인트 (Streamable HTTP):** ${server.publicUrl ?? "_배포 대기 중_"}`,
+        `- **MCP 버전:** ${server.mcpVersion}`,
+        `- **툴:** ${toolNames}`,
+        `- **응답속도 측정:** ${probe}`,
+        `- **갱신:** ${server.updatedAt}`,
+        ...(isLive ? ["", connectionGuideKo(server)] : []),
       ].join("\n"),
       { ctx },
     );
