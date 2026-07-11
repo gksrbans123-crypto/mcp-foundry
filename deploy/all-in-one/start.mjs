@@ -19,13 +19,18 @@
 import { spawn } from "node:child_process";
 import http from "node:http";
 import net from "node:net";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, existsSync } from "node:fs";
 
 const PUBLIC_PORT = Number(process.env.PORT ?? 8080);
 const CREATOR_PORT = Number(process.env.CREATOR_PORT ?? 3001);
 const RUNTIME_PORT = Number(process.env.RUNTIME_PORT ?? 3002);
 const DASHBOARD_PORT = Number(process.env.DASHBOARD_PORT ?? 3000);
 const SPEC_STORE_DIR = process.env.SPEC_STORE_DIR ?? "/data/specs";
+
+// The dashboard is optional: the backend-only image (PlayMCP submission) doesn't
+// build it, so `apps/dashboard/.next` is absent and we skip it. Set
+// SERVE_DASHBOARD=0 to force it off even when built.
+const DASHBOARD_ENABLED = process.env.SERVE_DASHBOARD !== "0" && existsSync("apps/dashboard/.next");
 
 // Hosts the built-in generator templates (weather/search/currency) call. Used
 // as the default EGRESS_ALLOWLIST so a template-only demo works out of the box;
@@ -152,6 +157,13 @@ function targetFor(url) {
 function startProxy() {
   const server = http.createServer((req, res) => {
     const port = targetFor(req.url ?? "/");
+    // Without a dashboard, non-MCP paths (incl. "/" — PlayMCP's health probe)
+    // get a plain 200 instead of proxying to a service that isn't running.
+    if (port === DASHBOARD_PORT && !DASHBOARD_ENABLED) {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ status: "ok", service: "mcp-foundry", mcp: "/mcp" }));
+      return;
+    }
     const upstream = http.request(
       { host: "127.0.0.1", port, path: req.url, method: req.method, headers: req.headers },
       (upRes) => {
@@ -178,9 +190,11 @@ async function main() {
   start("creator-mcp", "node", ["apps/creator-mcp/dist/index.js"]);
   start("runtime-host", "node", ["apps/runtime-host/dist/index.js"]);
   start("worker", "node", ["apps/worker/dist/index.js"]);
-  start("dashboard", "node_modules/.bin/next", ["start", "-p", String(DASHBOARD_PORT)], {
-    cwd: "apps/dashboard",
-  });
+  if (DASHBOARD_ENABLED) {
+    start("dashboard", "node_modules/.bin/next", ["start", "-p", String(DASHBOARD_PORT)], {
+      cwd: "apps/dashboard",
+    });
+  }
   // Give the two public-facing services a moment to bind before accepting
   // traffic; the proxy still 502s gracefully if they're not ready yet.
   await Promise.race([waitForPort(CREATOR_PORT), new Promise((r) => setTimeout(r, 5000))]);

@@ -13,3 +13,4 @@ coverage/
 # OMC orchestration state / local data — not part of the deliverable
 .omc/
 data/
+.vercel

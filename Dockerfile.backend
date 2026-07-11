@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+#
+# ── MCP Foundry — backend-only image (for PlayMCP "Git 소스 빌드" submission) ──
+#
+# creator-mcp + runtime-host + worker only — NO dashboard (that runs on Vercel),
+# so the build skips `next build` (much faster) and no Next.js process runs.
+# One reverse proxy (deploy/all-in-one/start.mjs) serves everything on $PORT:
+#   /mcp            -> creator-mcp    (register THIS on PlayMCP)
+#   /s/{slug}/mcp   -> runtime-host   (generated servers)
+#   /healthz, /     -> 200            (PlayMCP health probe)
+#
+# PORT defaults to 8000 to match PlayMCP's container_port. External Postgres
+# (Supabase) via env. Build context = repo root:
+#   docker build -f Dockerfile.backend -t mcp-foundry-backend .
+
+FROM node:22-slim AS base
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+WORKDIR /repo
+
+FROM base AS builder
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps ./apps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# Build only the backend services (+ their workspace deps). The dashboard is
+# not built, so start.mjs auto-skips it (no apps/dashboard/.next).
+RUN pnpm turbo run build \
+  --filter=@mcp-foundry/creator-mcp \
+  --filter=@mcp-foundry/runtime-host \
+  --filter=@mcp-foundry/worker
+
+FROM base AS runner
+ENV NODE_ENV=production
+ENV PORT=8000
+ENV SPEC_STORE_DIR=/data/specs
+WORKDIR /repo
+COPY --from=builder --chown=node:node /repo ./
+COPY --chown=node:node deploy/all-in-one/start.mjs ./deploy/all-in-one/start.mjs
+RUN mkdir -p /data/specs && chown -R node:node /data
+USER node
+EXPOSE 8000
+CMD ["node", "deploy/all-in-one/start.mjs"]
