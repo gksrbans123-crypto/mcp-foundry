@@ -71,7 +71,7 @@ export function createGetJobStatusHandler(ctx: ToolContext) {
         `- **현재 단계:** ${stageLabelKo(job.stage)} (\`${job.stage}\`)`,
         `- **진행 상황(웹):** ${buildServersUrl(ctx.dashboardBaseUrl, ctx.token)}`,
         "",
-        "잠시 후 `get_job_status`로 다시 확인하면 연결용 공개 URL을 드릴게요.",
+        "**완성 알림은 자동으로 오지 않아요.** 사용자에게 \"약 20~30초 뒤에 다시 '완료됐어?'라고 물어봐 주세요\"라고 안내하고, 그때 다시 `get_job_status`를 호출하면 연결용 공개 URL을 드려요.",
       ].join("\n"),
       { ctx },
     );

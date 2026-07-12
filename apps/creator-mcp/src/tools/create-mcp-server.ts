@@ -50,7 +50,9 @@ export function createCreateMcpServerHandler(ctx: ToolContext) {
         `- 📊 **대시보드(내 MCP 서버 전체):** ${buildServersUrl(ctx.dashboardBaseUrl, ctx.token)}`,
         "",
         "위 **두 링크**를 안내해 주세요 — 하나는 지금 만드는 작업의 실시간 진행 상황, 다른 하나는 내 서버 전체를 관리하는 대시보드예요.",
-        `잠시 뒤 \`get_job_status\`(작업 ID \`${job.id}\`)를 호출하면 **바로 연결해서 쓸 수 있는 공개 URL**을 알려드려요.`,
+        "",
+        "완성되면 **바로 연결해 쓸 수 있는 공개 URL**이 나와요. 다만 **완성 알림이 자동으로 오지는 않으니**, 사용자에게 \"약 **20~30초 뒤에** 다시 '완료됐어?'라고 물어봐 주세요\"라고 안내해 주세요.",
+        `_(어시스턴트 지시: \"잠시 후 URL을 알려드리겠다\"처럼 예고하지 마세요 — 생성 완료는 push 알림이 없습니다. 사용자가 다시 물어볼 때 \`get_job_status\`(작업 ID \`${job.id}\`)를 호출해 공개 URL을 전달하세요. 지금 즉시 호출하면 아직 생성 중(building)일 수 있습니다.)_`,
       ].join("\n"),
       { ctx },
     );
