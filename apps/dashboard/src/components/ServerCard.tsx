@@ -4,10 +4,13 @@ import type { StageState } from "../lib/pipeline";
 import { toServerCardViewModel } from "../lib/view-models";
 import { Pipeline } from "./Pipeline";
 
-export function ServerCard({ server, states }: { server: Server; states: StageState[] }) {
+export function ServerCard({ server, states, demo = false }: { server: Server; states: StageState[]; demo?: boolean }) {
   const view = toServerCardViewModel(server);
+  // Carry demo mode into the detail link so a demo card click stays on mock
+  // data instead of 404-ing on the placeholder "demo" token.
+  const href = demo ? `/servers/${server.id}?demo=1` : `/servers/${server.id}`;
   return (
-    <Link className="card" href={`/servers/${server.id}`}>
+    <Link className="card" href={href}>
       <div className="card-top">
         <div className="card-id">
           <p className="card-title">{view.name}</p>

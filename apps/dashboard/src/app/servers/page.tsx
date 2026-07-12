@@ -68,7 +68,7 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
         </div>
       </div>
 
-      <StatusFilterTabs counts={counts} active={filter} />
+      <StatusFilterTabs counts={counts} active={filter} demo={forceMock} />
 
       {context.notFound && (
         <div className="empty-state">
@@ -85,7 +85,7 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
       {visibleServers.length > 0 && (
         <div className="card-grid">
           {visibleServers.map((server) => (
-            <ServerCard key={server.id} server={server} states={context.pipelines[server.id] ?? []} />
+            <ServerCard key={server.id} server={server} states={context.pipelines[server.id] ?? []} demo={forceMock} />
           ))}
         </div>
       )}
