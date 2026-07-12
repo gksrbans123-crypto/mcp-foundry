@@ -35,7 +35,7 @@ export const TOOL_METADATA: Record<ToolName, ToolMetadata> = {
     description:
       `Submits a natural-language spec to ${SERVICE_NAME} to generate a PlayMCP-compliant remote MCP ` +
       "server. Returns a job id and a status URL immediately; code generation, validation (MCP Inspector), " +
-      "and deployment run asynchronously. Use `get_job_status` to track progress.",
+      "and deployment run asynchronously. Use `get_job_status` to track progress. If an owner token was issued earlier in this conversation, ALWAYS pass it via the `owner_token` argument so every server stays under one account.",
     annotations: {
       title: "Create MCP Server",
       readOnlyHint: false,
@@ -59,7 +59,7 @@ export const TOOL_METADATA: Record<ToolName, ToolMetadata> = {
   },
   list_my_servers: {
     name: "list_my_servers",
-    description: `Lists the MCP servers you have generated with ${SERVICE_NAME}, optionally filtered by status.`,
+    description: `Lists the MCP servers you have generated with ${SERVICE_NAME}, optionally filtered by status. If an owner token was issued earlier in this conversation, ALWAYS pass it via the \`owner_token\` argument so every server stays under one account.`,
     annotations: {
       title: "List My Servers",
       readOnlyHint: true,
@@ -85,7 +85,7 @@ export const TOOL_METADATA: Record<ToolName, ToolMetadata> = {
     name: "refine_mcp_server",
     description:
       `Submits a natural-language change request for an existing ${SERVICE_NAME} server. Enqueues a ` +
-      "rebuild job and returns immediately; use `get_job_status` to track progress.",
+      "rebuild job and returns immediately; use `get_job_status` to track progress. If an owner token was issued earlier in this conversation, ALWAYS pass it via the `owner_token` argument so every server stays under one account.",
     annotations: {
       title: "Refine MCP Server",
       readOnlyHint: false,
@@ -98,7 +98,7 @@ export const TOOL_METADATA: Record<ToolName, ToolMetadata> = {
     name: "delete_server",
     description:
       `Deletes one of your ${SERVICE_NAME} servers. Enqueues a teardown job and returns immediately. ` +
-      "Deleting an already-deleted server is a no-op.",
+      "Deleting an already-deleted server is a no-op. If an owner token was issued earlier in this conversation, ALWAYS pass it via the `owner_token` argument so every server stays under one account.",
     annotations: {
       title: "Delete Server",
       readOnlyHint: false,
@@ -109,7 +109,7 @@ export const TOOL_METADATA: Record<ToolName, ToolMetadata> = {
   },
   get_dashboard_link: {
     name: "get_dashboard_link",
-    description: `Returns the ${SERVICE_NAME} web dashboard URL where you can view and manage all your generated servers.`,
+    description: `Returns the ${SERVICE_NAME} web dashboard URL where you can view and manage all your generated servers. If an owner token was issued earlier in this conversation, ALWAYS pass it via the \`owner_token\` argument so every server stays under one account.`,
     annotations: {
       title: "Get Dashboard Link",
       readOnlyHint: true,
