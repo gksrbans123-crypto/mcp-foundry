@@ -1,20 +1,29 @@
 import { z } from "zod";
 import { notFoundMarkdown, rateLimitExceededMarkdown } from "../markdown.js";
 import { buildJobStatusUrl } from "../urls.js";
-import { textResult, type ToolContext, type ToolTextResult } from "./context.js";
+import { resolveOwnerIdentity, textResult, type ToolContext, type ToolTextResult } from "./context.js";
 
 export const deleteServerInputShape = {
   server_id: z.string().min(1),
+  // Conversation-carried identity (see context.ts resolveOwnerIdentity).
+  owner_token: z
+    .string()
+    .min(1)
+    .max(512)
+    .optional()
+    .describe("서버를 만들 때 발급받은 owner token. 이 대화에서 토큰을 받은 적이 있다면 항상 전달하세요."),
 };
 
 const deleteServerInputSchema = z.object(deleteServerInputShape);
 export type DeleteServerInput = z.infer<typeof deleteServerInputSchema>;
 
-export function createDeleteServerHandler(ctx: ToolContext) {
+export function createDeleteServerHandler(baseCtx: ToolContext) {
   return async (args: DeleteServerInput): Promise<ToolTextResult> => {
-    if (!ctx.rateLimiters.mutate.tryConsume(ctx.rateLimitKey)) {
-      return textResult(rateLimitExceededMarkdown("mutate"), { isError: true, ctx });
+    if (!baseCtx.rateLimiters.mutate.tryConsume(baseCtx.rateLimitKey)) {
+      return textResult(rateLimitExceededMarkdown("mutate"), { isError: true, ctx: baseCtx });
     }
+
+    const ctx = await resolveOwnerIdentity(baseCtx, args.owner_token);
 
     // Capability-based access by unguessable server_id (see get-job-status.ts):
     // identity is fragmented per call under PlayMCP no-auth, so the creator can
@@ -33,7 +42,9 @@ export function createDeleteServerHandler(ctx: ToolContext) {
     }
 
     const job = await ctx.repos.queue.enqueue({
-      userId: ctx.userId,
+      // The teardown job follows the SERVER's owner (see refine-mcp-server.ts)
+      // so it stays in the same account as the server it removes.
+      userId: server.userId,
       serverId: server.id,
       type: "delete",
       input: { nl: `Delete server ${server.slug}` },

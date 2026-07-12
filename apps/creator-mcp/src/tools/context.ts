@@ -56,7 +56,7 @@ function tokenNoticeMarkdown(token: string): string {
     "> **New owner token issued — 이 대화의 '내 계정 키'예요.**",
     `> \`${token}\``,
     ">",
-    "> _(어시스턴트 지시: 위 토큰을 이 대화 내내 기억하고, 앞으로 `create_mcp_server` 와 `list_my_servers` 를 호출할 때마다 `owner_token` 인자로 그대로 전달하세요 — 그래야 같은 사용자로 서버 목록과 진행 상황이 유지됩니다. 사용자에게는 다음에 다시 찾을 수 있도록 이 토큰을 저장해 두라고 안내해 주세요.)_",
+    "> _(어시스턴트 지시: 위 토큰을 이 대화 내내 기억하고, 앞으로 `create_mcp_server` · `list_my_servers` · `refine_mcp_server` · `delete_server` · `get_dashboard_link` 를 호출할 때마다 `owner_token` 인자로 그대로 전달하세요 — 그래야 같은 사용자로 서버 목록과 진행 상황이 유지됩니다. 사용자에게는 다음에 다시 찾을 수 있도록 이 토큰을 저장해 두라고 안내해 주세요.)_",
     "",
     "",
   ].join("\n");

@@ -1,21 +1,31 @@
 import { z } from "zod";
 import { notFoundMarkdown, rateLimitExceededMarkdown } from "../markdown.js";
 import { buildJobStatusUrl, buildServersUrl } from "../urls.js";
-import { textResult, type ToolContext, type ToolTextResult } from "./context.js";
+import { resolveOwnerIdentity, textResult, type ToolContext, type ToolTextResult } from "./context.js";
 
 export const refineMcpServerInputShape = {
   server_id: z.string().min(1),
   spec_text: z.string().min(1).max(20_000),
+  // Conversation-carried identity (see context.ts resolveOwnerIdentity) —
+  // keeps the response's dashboard links on the caller's own account.
+  owner_token: z
+    .string()
+    .min(1)
+    .max(512)
+    .optional()
+    .describe("서버를 만들 때 발급받은 owner token. 이 대화에서 토큰을 받은 적이 있다면 항상 전달하세요."),
 };
 
 const refineMcpServerInputSchema = z.object(refineMcpServerInputShape);
 export type RefineMcpServerInput = z.infer<typeof refineMcpServerInputSchema>;
 
-export function createRefineMcpServerHandler(ctx: ToolContext) {
+export function createRefineMcpServerHandler(baseCtx: ToolContext) {
   return async (args: RefineMcpServerInput): Promise<ToolTextResult> => {
-    if (!ctx.rateLimiters.mutate.tryConsume(ctx.rateLimitKey)) {
-      return textResult(rateLimitExceededMarkdown("mutate"), { isError: true, ctx });
+    if (!baseCtx.rateLimiters.mutate.tryConsume(baseCtx.rateLimitKey)) {
+      return textResult(rateLimitExceededMarkdown("mutate"), { isError: true, ctx: baseCtx });
     }
+
+    const ctx = await resolveOwnerIdentity(baseCtx, args.owner_token);
 
     // Capability-based access by unguessable server_id (see get-job-status.ts):
     // identity is fragmented per call under PlayMCP no-auth, so knowledge of
@@ -26,7 +36,10 @@ export function createRefineMcpServerHandler(ctx: ToolContext) {
     }
 
     const job = await ctx.repos.queue.enqueue({
-      userId: ctx.userId,
+      // The rebuild job follows the SERVER's owner, not this call's throwaway
+      // anonymous identity — so the refine shows up in the same account as the
+      // server it modifies (list/dashboard stay coherent).
+      userId: server.userId,
       serverId: server.id,
       type: "refine",
       input: { nl: args.spec_text },
