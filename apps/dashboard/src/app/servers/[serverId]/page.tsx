@@ -102,9 +102,38 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
       <section className="detail-section">
         <h2 className="section-title">연결 방법</h2>
         <p className="page-subtitle">
-          Claude, ChatGPT 등 Streamable HTTP를 지원하는 MCP 클라이언트에서 위 공개 URL을 Remote MCP
-          서버로 등록하면 바로 연결됩니다.
+          위 공개 URL은 <strong>Remote MCP (Streamable HTTP)</strong> 엔드포인트입니다. Streamable HTTP를
+          지원하는 MCP 클라이언트에 등록하면 바로 연결됩니다.
         </p>
+        {server.publicUrl && (
+          <ul className="tool-list">
+            <li>
+              <div className="tool-name">Claude Code (CLI)</div>
+              <div className="public-url-row">
+                <span className="public-url-text">
+                  {`claude mcp add --transport http ${server.slug} ${server.publicUrl}`}
+                </span>
+                <CopyButton value={`claude mcp add --transport http ${server.slug} ${server.publicUrl}`} />
+              </div>
+            </li>
+            <li>
+              <div className="tool-name">Claude Desktop</div>
+              <div className="page-subtitle">
+                설정 → 커넥터 → <strong>커스텀 커넥터 추가</strong> → 위 공개 URL 붙여넣기
+              </div>
+            </li>
+            <li>
+              <div className="tool-name">ChatGPT</div>
+              <div className="page-subtitle">
+                설정 → 커넥터(개발자 모드) → <strong>추가</strong> → 위 공개 URL 붙여넣기 (커넥터 지원 플랜 필요)
+              </div>
+            </li>
+            <li>
+              <div className="tool-name">Cursor · MCP Inspector</div>
+              <div className="page-subtitle">Remote MCP(Streamable HTTP) 주소 칸에 위 공개 URL 입력</div>
+            </li>
+          </ul>
+        )}
       </section>
 
       <section className="detail-section">

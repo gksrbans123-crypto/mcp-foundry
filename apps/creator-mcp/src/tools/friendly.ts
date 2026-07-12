@@ -21,11 +21,14 @@ export function stageLabelKo(stage: string): string {
 export function connectionGuideKo(server: Server): string {
   const url = server.publicUrl ?? "";
   return [
-    "**바로 연결해서 쓰는 법** — 아래 URL을 MCP 클라이언트에 **Remote MCP (Streamable HTTP)** 로 등록하면 됩니다.",
+    "**바로 연결해서 쓰는 법** — 위 공개 URL은 **Remote MCP (Streamable HTTP)** 엔드포인트예요.",
     "",
+    "**Claude Code (CLI):**",
     "```",
     `claude mcp add --transport http ${server.slug} ${url}`,
     "```",
-    "Claude Desktop · Cursor · MCP Inspector 등에서는 Remote MCP(Streamable HTTP) 주소 칸에 위 URL을 넣으세요.",
+    "- **Claude Desktop:** 설정 → 커넥터 → 커스텀 커넥터 추가 → 위 URL 붙여넣기",
+    "- **ChatGPT:** 설정 → 커넥터(개발자 모드) → 추가 → 위 URL 붙여넣기 (커넥터 지원 플랜 필요)",
+    "- **Cursor · MCP Inspector:** Remote MCP(Streamable HTTP) 주소 칸에 위 URL 입력",
   ].join("\n");
 }
