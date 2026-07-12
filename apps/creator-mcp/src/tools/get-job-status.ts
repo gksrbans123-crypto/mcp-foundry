@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { notFoundMarkdown, rateLimitExceededMarkdown } from "../markdown.js";
-import { buildJobStatusUrl, buildServerDetailUrl, buildServersUrl } from "../urls.js";
+import { buildJobStatusUrl, buildServerDetailUrl } from "../urls.js";
 import { connectionGuideKo, stageLabelKo } from "./friendly.js";
 import { textResult, type ToolContext, type ToolTextResult } from "./context.js";
 
@@ -76,7 +76,8 @@ export function createGetJobStatusHandler(ctx: ToolContext) {
         "",
         `- **작업 ID:** \`${job.id}\``,
         `- **현재 단계:** ${stageLabelKo(job.stage)} (\`${job.stage}\`)`,
-        `- **진행 상황(웹):** ${buildServersUrl(ctx.dashboardBaseUrl, ctx.token)}`,
+        // Job detail page (capability-based), not the owner-scoped /servers list.
+        `- **진행 상황(웹):** ${buildJobStatusUrl(ctx.dashboardBaseUrl, ctx.token, job.id)}`,
         "",
         "**완성 알림은 자동으로 오지 않아요.** 사용자에게 \"약 20~30초 뒤에 다시 '완료됐어?'라고 물어봐 주세요\"라고 안내하고, 그때 다시 `get_job_status`를 호출하면 연결용 공개 URL을 드려요.",
       ].join("\n"),

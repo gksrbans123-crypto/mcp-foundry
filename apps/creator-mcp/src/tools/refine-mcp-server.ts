@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { notFoundMarkdown, rateLimitExceededMarkdown } from "../markdown.js";
-import { buildJobStatusUrl, buildServersUrl } from "../urls.js";
+import { buildJobStatusUrl, buildServerDetailUrl } from "../urls.js";
 import { resolveOwnerIdentity, textResult, type ToolContext, type ToolTextResult } from "./context.js";
 
 export const refineMcpServerInputShape = {
@@ -52,7 +52,10 @@ export function createRefineMcpServerHandler(baseCtx: ToolContext) {
         `- **Job ID:** \`${job.id}\``,
         `- **Server:** ${server.name} (\`${server.slug}\`)`,
         `- **Status URL:** ${buildJobStatusUrl(ctx.dashboardBaseUrl, ctx.token, job.id)}`,
-        `- **Dashboard:** ${buildServersUrl(ctx.dashboardBaseUrl, ctx.token)}`,
+        // Server DETAIL page, not the owner-scoped /servers list: detail pages
+        // are capability-based (id is the gate), so this link shows the refine
+        // pipeline + job history no matter which token rides along.
+        `- **Dashboard:** ${buildServerDetailUrl(ctx.dashboardBaseUrl, ctx.token, server.id)}`,
         "",
         "Use `get_job_status` with this job id to track progress.",
       ].join("\n"),
