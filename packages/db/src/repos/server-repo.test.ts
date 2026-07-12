@@ -7,6 +7,7 @@ import {
   findServerByDeployIdempotencyKey,
   findServerBySlug,
   listServersByUser,
+  SlugConflictError,
   softDeleteServer,
   updateServer,
 } from "./server-repo.js";
@@ -27,6 +28,28 @@ describe.skipIf(!hasTestDatabase())("serverRepo (integration)", () => {
 
   afterAll(async () => {
     await pool.end();
+  });
+
+  it("throws SlugConflictError when the slug is taken under a different idempotency key", async () => {
+    await createServerFromJob(pool, {
+      userId,
+      name: "weather-bot",
+      slug: "weather-lookup",
+      mcpVersion: "2025-06-18",
+      tools: [],
+      idempotencyKey: "hash-a",
+    });
+
+    await expect(
+      createServerFromJob(pool, {
+        userId,
+        name: "weather-bot-2",
+        slug: "weather-lookup",
+        mcpVersion: "2025-06-18",
+        tools: [],
+        idempotencyKey: "hash-b",
+      }),
+    ).rejects.toBeInstanceOf(SlugConflictError);
   });
 
   it("creates a server from a job and finds it by slug", async () => {

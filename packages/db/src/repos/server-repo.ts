@@ -16,6 +16,22 @@ export interface CreateServerFromJobResult {
   alreadyExisted: boolean;
 }
 
+/** The servers.slug UNIQUE constraint rejected an insert — template-derived
+ * slugs collapse onto fixed defaults (e.g. "weather-lookup"), so callers
+ * (worker building stage) catch this and retry with a de-collided slug. */
+export class SlugConflictError extends Error {
+  constructor(readonly slug: string) {
+    super(`server slug "${slug}" is already taken`);
+    this.name = "SlugConflictError";
+  }
+}
+
+function isSlugUniqueViolation(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const pgError = error as { code?: string; constraint?: string };
+  return pgError.code === "23505" && pgError.constraint === "servers_slug_key";
+}
+
 /**
  * Enforces the R5 deploy idempotency invariant: inserts a new 'building'
  * server, but if a server with this idempotencyKey (sha256 of parsed_spec)
@@ -27,13 +43,19 @@ export async function createServerFromJob(
   db: Queryable,
   input: CreateServerFromJobInput,
 ): Promise<CreateServerFromJobResult> {
-  const inserted = await db.query<ServerRow>(
-    `INSERT INTO servers (user_id, name, slug, mcp_version, status, tools, idempotency_key)
-     VALUES ($1, $2, $3, $4, 'building', $5::jsonb, $6)
-     ON CONFLICT (idempotency_key) DO NOTHING
-     RETURNING *`,
-    [input.userId, input.name, input.slug, input.mcpVersion, JSON.stringify(input.tools), input.idempotencyKey],
-  );
+  let inserted;
+  try {
+    inserted = await db.query<ServerRow>(
+      `INSERT INTO servers (user_id, name, slug, mcp_version, status, tools, idempotency_key)
+       VALUES ($1, $2, $3, $4, 'building', $5::jsonb, $6)
+       ON CONFLICT (idempotency_key) DO NOTHING
+       RETURNING *`,
+      [input.userId, input.name, input.slug, input.mcpVersion, JSON.stringify(input.tools), input.idempotencyKey],
+    );
+  } catch (error) {
+    if (isSlugUniqueViolation(error)) throw new SlugConflictError(input.slug);
+    throw error;
+  }
   if (inserted.rows[0]) {
     return { server: mapServerRow(inserted.rows[0]), alreadyExisted: false };
   }

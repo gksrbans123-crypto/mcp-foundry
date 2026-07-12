@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { SlugConflictError } from "@mcp-foundry/db";
 import type { CreateServerFromJobInput, CreateServerFromJobResult, UpdateServerPatch } from "@mcp-foundry/db";
 import type { Server } from "@mcp-foundry/shared";
 import type { WorkerRepos } from "./types.js";
@@ -12,6 +13,7 @@ import type { WorkerRepos } from "./types.js";
 export function createMemoryWorkerRepos(): WorkerRepos {
   const byId = new Map<string, Server>();
   const byIdempotencyKey = new Map<string, string>();
+  const usedSlugs = new Set<string>();
 
   return {
     servers: {
@@ -21,6 +23,8 @@ export function createMemoryWorkerRepos(): WorkerRepos {
           const server = byId.get(existingId);
           if (server) return { server, alreadyExisted: true };
         }
+        // Mirrors the servers_slug_key UNIQUE constraint in Postgres.
+        if (usedSlugs.has(input.slug)) throw new SlugConflictError(input.slug);
 
         const now = new Date().toISOString();
         const server: Server = {
@@ -39,6 +43,7 @@ export function createMemoryWorkerRepos(): WorkerRepos {
         };
         byId.set(server.id, server);
         byIdempotencyKey.set(input.idempotencyKey, server.id);
+        usedSlugs.add(input.slug);
         return { server, alreadyExisted: false };
       },
 
