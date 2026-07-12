@@ -75,6 +75,16 @@ export class PgQueue implements Queue {
     return withTransaction(this.pool, async (client) => {
       const current = await assertLockOwnedBy(client, jobId, workerId);
       const isTerminal = options.terminal === true || current.attempts >= maxAttempts;
+      if (isTerminal && current.type === "create" && current.serverId) {
+        // A create job's server row is still 'building' at this point; without
+        // this it would stay in-progress forever and never show up under the
+        // dashboard's "실패" filter. Guarded so an already-active/deleted
+        // server is never clobbered (e.g. a refine-era failure).
+        await client.query(
+          `UPDATE servers SET status = 'failed', updated_at = now() WHERE id = $1 AND status = 'building'`,
+          [current.serverId],
+        );
+      }
       const job = await advanceStage(client, jobId, {
         stage: isTerminal ? "failed" : current.stage,
         status: isTerminal ? "failed" : current.status,

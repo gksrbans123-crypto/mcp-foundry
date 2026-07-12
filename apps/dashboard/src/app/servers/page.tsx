@@ -49,8 +49,9 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
   }
 
   const context = await loadOwnerContext(token, { forceMock });
-  const counts = buildFilterCounts(context.servers);
+  const counts = buildFilterCounts([...context.servers, ...context.failedCreates]);
   const visibleServers = filterServers(context.servers, filter);
+  const visibleFailedCreates = filterServers(context.failedCreates, filter);
 
   return (
     <main className="page">
@@ -76,16 +77,25 @@ export default async function ServersPage({ searchParams }: ServersPageProps) {
         </div>
       )}
 
-      {!context.notFound && visibleServers.length === 0 && (
+      {!context.notFound && visibleServers.length === 0 && visibleFailedCreates.length === 0 && (
         <div className="empty-state">
           <p>해당 필터에 표시할 서버가 없습니다.</p>
         </div>
       )}
 
-      {visibleServers.length > 0 && (
+      {(visibleServers.length > 0 || visibleFailedCreates.length > 0) && (
         <div className="card-grid">
           {visibleServers.map((server) => (
             <ServerCard key={server.id} server={server} states={context.pipelines[server.id] ?? []} demo={forceMock} />
+          ))}
+          {visibleFailedCreates.map((entry) => (
+            <ServerCard
+              key={entry.id}
+              server={entry}
+              states={context.pipelines[entry.id] ?? []}
+              demo={forceMock}
+              href={`/jobs/${entry.id}`}
+            />
           ))}
         </div>
       )}

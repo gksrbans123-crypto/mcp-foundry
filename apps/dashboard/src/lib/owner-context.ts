@@ -1,6 +1,7 @@
 import type { Job } from "@mcp-foundry/shared";
 import { findUserByAuthRef, listJobsByUser, listServersByUser, listStatusEventsByJob } from "@mcp-foundry/db";
 import { getPool, logDashboardDataError } from "./db-client";
+import { isOrphanFailedCreate, toFailedCreatePseudoServer } from "./failed-creates";
 import { buildMockOwnerContext, type OwnerContext } from "./mock-data";
 import { derivePipeline, type StageState } from "./pipeline";
 import { hashOwnerToken } from "./token";
@@ -33,7 +34,7 @@ export async function loadOwnerContext(rawToken: string, options: { forceMock?: 
     const authRef = hashOwnerToken(rawToken);
     const user = await findUserByAuthRef(pool, authRef);
     if (!user) {
-      return { source: "db", user: null, servers: [], notFound: true, pipelines: {} };
+      return { source: "db", user: null, servers: [], failedCreates: [], notFound: true, pipelines: {} };
     }
     const [servers, jobs] = await Promise.all([
       listServersByUser(pool, user.id),
@@ -48,16 +49,25 @@ export async function loadOwnerContext(rawToken: string, options: { forceMock?: 
       if (!prev || job.createdAt > prev.createdAt) latestByServer.set(job.serverId, job);
     }
 
+    // Create jobs that died before a server row existed live only in the
+    // jobs table — surface them as failed cards instead of silently hiding.
+    const orphanFailedJobs = jobs.filter(isOrphanFailedCreate);
+    const failedCreates = orphanFailedJobs.map(toFailedCreatePseudoServer);
+
     const pipelines: Record<string, StageState[]> = {};
-    await Promise.all(
-      servers.map(async (server) => {
+    await Promise.all([
+      ...servers.map(async (server) => {
         const job = latestByServer.get(server.id) ?? null;
         const events = job ? await listStatusEventsByJob(pool, job.id) : [];
         pipelines[server.id] = derivePipeline(job, events);
       }),
-    );
+      ...orphanFailedJobs.map(async (job) => {
+        const events = await listStatusEventsByJob(pool, job.id);
+        pipelines[job.id] = derivePipeline(job, events);
+      }),
+    ]);
 
-    return { source: "db", user, servers, notFound: false, pipelines };
+    return { source: "db", user, servers, failedCreates, notFound: false, pipelines };
   } catch (error) {
     logDashboardDataError("loadOwnerContext", error);
     return buildMockOwnerContext();

@@ -3,6 +3,7 @@ import type { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createTestPool, ensureMigrated, hasTestDatabase, truncateAll } from "../test-support/db.js";
 import { createUser } from "../repos/user-repo.js";
+import { createServerFromJob, findServerById, updateServer } from "../repos/server-repo.js";
 import { listStatusEventsByJob } from "../repos/status-event-repo.js";
 import { PgQueue } from "./pg-queue.js";
 
@@ -123,6 +124,45 @@ describe.skipIf(!hasTestDatabase())("PgQueue (integration)", () => {
     const claimed = await queue.claim("worker-a");
     const result = await queue.fail(claimed!.id, "worker-a", "DSL envelope exceeded", { terminal: true });
     expect(result.stage).toBe("failed");
+  });
+
+  it("terminal failure of a create job marks its still-building server row failed", async () => {
+    const job = await queue.enqueue({ userId, type: "create", input: { nl: "weather" } });
+    await queue.claim("worker-a");
+    const { server } = await createServerFromJob(pool, {
+      userId,
+      name: "weather-bot",
+      slug: "weather-terminal-fail",
+      mcpVersion: "2025-06-18",
+      tools: [],
+      idempotencyKey: "hash-terminal",
+    });
+    await queue.complete(job.id, "worker-a", { stage: "building", serverId: server.id });
+    await queue.claim("worker-a");
+
+    await queue.fail(job.id, "worker-a", "validator rejected the spec", { terminal: true });
+
+    expect((await findServerById(pool, server.id))?.status).toBe("failed");
+  });
+
+  it("terminal create failure never clobbers a server that already went active", async () => {
+    const job = await queue.enqueue({ userId, type: "create", input: { nl: "weather" } });
+    await queue.claim("worker-a");
+    const { server } = await createServerFromJob(pool, {
+      userId,
+      name: "weather-bot",
+      slug: "weather-already-active",
+      mcpVersion: "2025-06-18",
+      tools: [],
+      idempotencyKey: "hash-active",
+    });
+    await updateServer(pool, server.id, { status: "active" });
+    await queue.complete(job.id, "worker-a", { stage: "building", serverId: server.id });
+    await queue.claim("worker-a");
+
+    await queue.fail(job.id, "worker-a", "late failure", { terminal: true });
+
+    expect((await findServerById(pool, server.id))?.status).toBe("active");
   });
 
   it("rejects complete/fail from a worker that does not hold the lock", async () => {

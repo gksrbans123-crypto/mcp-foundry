@@ -4,11 +4,22 @@ import type { StageState } from "../lib/pipeline";
 import { toServerCardViewModel } from "../lib/view-models";
 import { Pipeline } from "./Pipeline";
 
-export function ServerCard({ server, states, demo = false }: { server: Server; states: StageState[]; demo?: boolean }) {
+export function ServerCard({
+  server,
+  states,
+  demo = false,
+  href: hrefOverride,
+}: {
+  server: Server;
+  states: StageState[];
+  demo?: boolean;
+  /** Overrides the detail link — failed-create pseudo entries point at their job timeline instead of /servers/{id}. */
+  href?: string;
+}) {
   const view = toServerCardViewModel(server);
   // Carry demo mode into the detail link so a demo card click stays on mock
   // data instead of 404-ing on the placeholder "demo" token.
-  const href = demo ? `/servers/${server.id}?demo=1` : `/servers/${server.id}`;
+  const href = hrefOverride ?? (demo ? `/servers/${server.id}?demo=1` : `/servers/${server.id}`);
   return (
     <Link className="card" href={href}>
       <div className="card-top">
