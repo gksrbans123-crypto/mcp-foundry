@@ -4,13 +4,16 @@ import { createTokenBucketLimiter, type TokenBucketLimiter } from "../rate-limit
 import type { AuthN } from "./authn.js";
 import { createAuthMiddleware } from "./middleware.js";
 
-function buildReqRes(options: { headerValue?: string; ip?: string } = {}): {
+function buildReqRes(options: { headerValue?: string; authorization?: string; ip?: string } = {}): {
   req: Request;
   res: Response;
   next: NextFunction;
 } {
+  const headers: Record<string, string> = {};
+  if (options.headerValue) headers["x-owner-token"] = options.headerValue;
+  if (options.authorization) headers.authorization = options.authorization;
   const req = {
-    headers: options.headerValue ? { "x-owner-token": options.headerValue } : {},
+    headers,
     ip: options.ip ?? "127.0.0.1",
     socket: { remoteAddress: options.ip ?? "127.0.0.1" },
   } as unknown as Request;
@@ -61,6 +64,40 @@ describe("createAuthMiddleware", () => {
 
     expect(authn.verify).toHaveBeenCalledWith("valid-token");
     expect(res.locals.creatorAuth).toEqual({ userId: "user-42", token: "valid-token", rateLimitKey: "user-42" });
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("extracts and verifies an Authorization: Bearer token (PlayMCP OAuth), preferring it over auto-issue", async () => {
+    const authn: AuthN = {
+      issueToken: vi.fn(),
+      verify: vi.fn().mockResolvedValue("oauth-user"),
+    };
+    const middleware = createAuthMiddleware(authn, unlimitedIssuanceLimiter());
+    const { req, res, next } = buildReqRes({ authorization: "Bearer header.payload.sig" });
+
+    await middleware(req, res, next);
+
+    expect(authn.verify).toHaveBeenCalledWith("header.payload.sig");
+    expect(authn.issueToken).not.toHaveBeenCalled();
+    expect(res.locals.creatorAuth).toEqual({
+      userId: "oauth-user",
+      token: "header.payload.sig",
+      rateLimitKey: "oauth-user",
+    });
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("prefers the Authorization: Bearer token over X-Owner-Token when both are present", async () => {
+    const authn: AuthN = {
+      issueToken: vi.fn(),
+      verify: vi.fn().mockResolvedValue("oauth-user"),
+    };
+    const middleware = createAuthMiddleware(authn, unlimitedIssuanceLimiter());
+    const { req, res, next } = buildReqRes({ authorization: "Bearer bearer-tok", headerValue: "owner-tok" });
+
+    await middleware(req, res, next);
+
+    expect(authn.verify).toHaveBeenCalledWith("bearer-tok");
     expect(next).toHaveBeenCalledOnce();
   });
 
