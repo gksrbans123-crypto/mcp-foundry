@@ -26,31 +26,39 @@ describe("createSignedOwnerTokenAuthN", () => {
     expect(user.id).toBe(issued.userId);
   });
 
-  it("rejects a token signed with a different secret", async () => {
+  it("accepts an arbitrary user-chosen token as a stable namespace identity (custom-header auth)", async () => {
+    // A value the user types into PlayMCP's custom X-Owner-Token header must
+    // resolve to the SAME identity on every call, so list_my_servers / the
+    // dashboard persist across PlayMCP's per-call anonymous connections.
+    const repos = createMemoryRepos();
+    const authn = createSignedOwnerTokenAuthN({ secret: SECRET, users: repos.users });
+
+    const first = await authn.verify("my-namespace-key-2026");
+    const second = await authn.verify("my-namespace-key-2026");
+
+    expect(first).not.toBeNull();
+    expect(first).toBe(second);
+  });
+
+  it("maps different tokens to different identities", async () => {
+    const repos = createMemoryRepos();
+    const authn = createSignedOwnerTokenAuthN({ secret: SECRET, users: repos.users });
+
+    const a = await authn.verify("owner-token-aaaaaaaa");
+    const b = await authn.verify("owner-token-bbbbbbbb");
+
+    expect(a).not.toBe(b);
+  });
+
+  it("verifies identity independently of the signing secret (verify only hashes the token)", async () => {
+    // The dashboard derives the same identity by hashing the raw token with no
+    // secret, so verify must be secret-independent to stay consistent with it.
     const repos = createMemoryRepos();
     const issuer = createSignedOwnerTokenAuthN({ secret: SECRET, users: repos.users });
-    const verifier = createSignedOwnerTokenAuthN({ secret: "wrong-secret", users: repos.users });
+    const otherVerifier = createSignedOwnerTokenAuthN({ secret: "different-secret", users: repos.users });
 
     const issued = await issuer.issueToken();
-    expect(await verifier.verify(issued.token)).toBeNull();
-  });
-
-  it("rejects a tampered payload", async () => {
-    const repos = createMemoryRepos();
-    const authn = createSignedOwnerTokenAuthN({ secret: SECRET, users: repos.users });
-    const issued = await authn.issueToken();
-
-    const [, signature] = issued.token.split(".");
-    const tampered = `tampered-payload.${signature}`;
-
-    expect(await authn.verify(tampered)).toBeNull();
-  });
-
-  it("rejects a malformed token (no separator)", async () => {
-    const repos = createMemoryRepos();
-    const authn = createSignedOwnerTokenAuthN({ secret: SECRET, users: repos.users });
-
-    expect(await authn.verify("not-a-real-token")).toBeNull();
+    expect(await otherVerifier.verify(issued.token)).toBe(issued.userId);
   });
 
   it("rejects undefined/empty tokens without throwing", async () => {

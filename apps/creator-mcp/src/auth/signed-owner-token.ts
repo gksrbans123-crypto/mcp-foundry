@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import type { CreatorUserRepo } from "../repos/types.js";
 import type { AuthN } from "./authn.js";
 
@@ -12,34 +12,32 @@ function hashToken(rawToken: string): string {
   return createHash("sha256").update(rawToken).digest("hex");
 }
 
-function verifySignature(secret: string, token: string): boolean {
-  const separatorIndex = token.indexOf(".");
-  if (separatorIndex <= 0) return false;
-  const payload = token.slice(0, separatorIndex);
-  const presented = token.slice(separatorIndex + 1);
-  const expected = sign(secret, payload);
-  const presentedBuf = Buffer.from(presented, "hex");
-  const expectedBuf = Buffer.from(expected, "hex");
-  if (presentedBuf.length !== expectedBuf.length) return false;
-  return timingSafeEqual(presentedBuf, expectedBuf);
-}
-
 export interface SignedOwnerTokenConfig {
   secret: string;
   users: CreatorUserRepo;
 }
 
 /**
- * AuthN impl A (plan §9, docs/g-a-oauth-decision.md): a self-issued bearer
- * token carried in the `X-Owner-Token` custom header.
+ * AuthN impl A (plan §9, docs/g-a-oauth-decision.md): a bearer token carried
+ * in the `X-Owner-Token` custom header.
  *
- * Token shape is `<payload>.<hmac>` where `hmac = HMAC-SHA256(secret,
- * payload)` — a malformed/forged token is rejected by recomputing the HMAC
- * alone, with no database round trip. Once the signature checks out, the
- * user-identity lookup key is `sha256(<the whole raw token>)`, matching
- * apps/dashboard's independent derivation (src/lib/token.ts `hashOwnerToken`)
- * of the same value from a token a user pastes into the dashboard — both
- * sides must hash the full token identically, not just the payload.
+ * `issueToken` mints a random `<payload>.<hmac>` token for first-call
+ * onboarding. `verify`, however, treats the header as a stable *namespace*
+ * key rather than a signed credential: it accepts ANY non-empty token and
+ * derives identity as `sha256(<the whole raw token>)`. This is deliberate —
+ *   1. it matches apps/dashboard's derivation (src/lib/token.ts
+ *      `hashOwnerToken`), which has always just hashed whatever the user
+ *      pastes, with no signature check; and
+ *   2. it lets a user pin identity by typing their own value into PlayMCP's
+ *      custom-header connector, so `list_my_servers` / the dashboard persist
+ *      across PlayMCP's per-call anonymous connections (which otherwise mint a
+ *      fresh user every call — see the identity-fragmentation note in
+ *      tools/get-job-status.ts).
+ *
+ * The token is a "which servers are mine" namespace, NOT a hard security
+ * boundary: every generated server is a public MCP endpoint and server_id
+ * access is already capability-based. Callers should pick a long, unique,
+ * hard-to-guess value to avoid sharing a namespace with someone else.
  */
 export function createSignedOwnerTokenAuthN(config: SignedOwnerTokenConfig): AuthN {
   const { secret, users } = config;
@@ -53,7 +51,7 @@ export function createSignedOwnerTokenAuthN(config: SignedOwnerTokenConfig): Aut
     },
 
     async verify(token) {
-      if (!token || !verifySignature(secret, token)) return null;
+      if (!token) return null;
       const user = await users.findOrCreateByAuthRef(hashToken(token));
       return user.id;
     },
