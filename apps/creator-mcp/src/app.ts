@@ -101,6 +101,7 @@ export function createApp(config: CreatorAppConfig): Express {
       repos: config.repos,
       rateLimiters,
       dashboardBaseUrl: config.dashboardBaseUrl,
+      verifyToken: (token) => config.authn.verify(token),
     });
 
     try {

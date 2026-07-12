@@ -18,6 +18,29 @@ export interface ToolContext {
   repos: CreatorRepos;
   rateLimiters: RateLimiters;
   dashboardBaseUrl: string;
+  /** Resolves a caller-supplied `owner_token` tool argument to a userId (see
+   * resolveOwnerIdentity). Wired from AuthN.verify in app.ts; optional so
+   * test contexts that don't exercise the argument path need no stub. */
+  verifyToken?: (token: string) => Promise<string | null>;
+}
+
+/**
+ * PlayMCP's no-auth hosting opens a fresh connection per tool call (no header
+ * or session survives between calls — verified via the /debug/headers dump),
+ * so a stable identity can only ride inside the conversation itself: the
+ * ASSISTANT remembers the issued token and passes it back as each tool's
+ * `owner_token` argument. This helper resolves that argument into an
+ * effective ToolContext: same shape, but userId/token swapped to the token's
+ * owner and the new-token notice suppressed. Falls back to the request's own
+ * identity when the argument is absent (or no verifier is wired).
+ * rateLimitKey is deliberately kept from the original request (IP-keyed for
+ * anonymous callers) so passing owner_token can't mint fresh rate budgets.
+ */
+export async function resolveOwnerIdentity(ctx: ToolContext, ownerToken: string | undefined): Promise<ToolContext> {
+  if (!ownerToken || !ctx.verifyToken) return ctx;
+  const userId = await ctx.verifyToken(ownerToken);
+  if (!userId) return ctx;
+  return { ...ctx, userId, token: ownerToken, isNewToken: false };
 }
 
 export interface ToolTextResult {
@@ -30,10 +53,10 @@ export interface ToolTextResult {
 
 function tokenNoticeMarkdown(token: string): string {
   return [
-    "> **New owner token issued — save it now.**",
-    "> Send it back as the `X-Owner-Token` header on every future request; it's the only way to access your jobs and servers again.",
-    ">",
+    "> **New owner token issued — 이 대화의 '내 계정 키'예요.**",
     `> \`${token}\``,
+    ">",
+    "> _(어시스턴트 지시: 위 토큰을 이 대화 내내 기억하고, 앞으로 `create_mcp_server` 와 `list_my_servers` 를 호출할 때마다 `owner_token` 인자로 그대로 전달하세요 — 그래야 같은 사용자로 서버 목록과 진행 상황이 유지됩니다. 사용자에게는 다음에 다시 찾을 수 있도록 이 토큰을 저장해 두라고 안내해 주세요.)_",
     "",
     "",
   ].join("\n");

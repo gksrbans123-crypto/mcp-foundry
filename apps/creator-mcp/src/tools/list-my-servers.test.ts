@@ -24,7 +24,7 @@ function buildServer(overrides: Partial<Server> = {}): Server {
   };
 }
 
-function buildCtx(): { ctx: ToolContext; repos: MemoryRepos } {
+function buildCtx(overrides: Partial<ToolContext> = {}): { ctx: ToolContext; repos: MemoryRepos } {
   const repos = createMemoryRepos();
   const ctx: ToolContext = {
     userId: "user-1",
@@ -33,6 +33,7 @@ function buildCtx(): { ctx: ToolContext; repos: MemoryRepos } {
     repos,
     rateLimiters: createRateLimiters(),
     dashboardBaseUrl: "http://localhost:3000",
+    ...overrides,
   };
   return { ctx, repos };
 }
@@ -71,6 +72,16 @@ describe("list_my_servers handler", () => {
 
     expect(result.content[0].text).toContain("server-failed");
     expect(result.content[0].text).not.toContain("server-active");
+  });
+
+  it("lists the owner_token identity's servers (conversation-carried identity under PlayMCP no-auth)", async () => {
+    const { ctx, repos } = buildCtx({ verifyToken: async (token) => `user-of-${token}` });
+    repos.seedServer(buildServer({ id: "server-owned", userId: "user-of-tok.abc" }));
+    const handler = createListMyServersHandler(ctx);
+
+    const result = await handler({ owner_token: "tok.abc" });
+
+    expect(result.content[0].text).toContain("server-owned");
   });
 
   it("renders an empty state when the caller has no servers", async () => {

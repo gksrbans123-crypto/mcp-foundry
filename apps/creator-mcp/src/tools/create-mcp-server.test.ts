@@ -88,6 +88,20 @@ describe("create_mcp_server handler", () => {
     expect(fourth.content[0].text).toMatch(/Rate limit exceeded/);
   });
 
+  it("owns the job by the owner_token identity and suppresses the new-token notice", async () => {
+    const ctx = buildCtx({ isNewToken: true, verifyToken: async (token) => `user-of-${token}` });
+    const handler = createCreateMcpServerHandler(ctx);
+
+    const result = await handler({ spec_text: "spec", owner_token: "tok.abc" });
+    const job = await ctx.repos.jobs.findById(extractJobId(result.content[0].text));
+
+    // Conversation-carried identity wins over this request's auto-issued one.
+    expect(job?.userId).toBe("user-of-tok.abc");
+    expect(result.content[0].text).not.toContain("New owner token issued");
+    // Dashboard links must carry the owner token so they open the right account.
+    expect(result.content[0].text).toContain("token=tok.abc");
+  });
+
   it("prepends the owner-token notice when ctx.isNewToken is set", async () => {
     const ctx = buildCtx({ token: "brand-new-token", isNewToken: true });
     const handler = createCreateMcpServerHandler(ctx);

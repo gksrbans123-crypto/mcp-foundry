@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { rateLimitExceededMarkdown } from "../markdown.js";
 import { buildJobStatusUrl, buildServersUrl } from "../urls.js";
-import { textResult, type ToolContext, type ToolTextResult } from "./context.js";
+import { resolveOwnerIdentity, textResult, type ToolContext, type ToolTextResult } from "./context.js";
 
 export const createMcpServerInputShape = {
   spec_text: z.string().min(1, "spec_text is required").max(20_000),
@@ -16,16 +16,31 @@ export const createMcpServerInputShape = {
     .optional(),
   endpoint_descriptor: z.record(z.string(), z.unknown()).optional(),
   name: z.string().min(1).max(128).optional(),
+  // Conversation-carried identity (see context.ts resolveOwnerIdentity):
+  // PlayMCP no-auth keeps nothing between calls, so the assistant passes the
+  // previously issued token back here to keep every server under one owner.
+  owner_token: z
+    .string()
+    .min(1)
+    .max(512)
+    .optional()
+    .describe(
+      "이전 응답에서 발급받은 owner token. 전달하면 같은 사용자 소유로 서버가 만들어져 list_my_servers에 함께 보입니다. 이 대화에서 토큰을 받은 적이 있다면 항상 전달하세요.",
+    ),
 };
 
 const createMcpServerInputSchema = z.object(createMcpServerInputShape);
 export type CreateMcpServerInput = z.infer<typeof createMcpServerInputSchema>;
 
-export function createCreateMcpServerHandler(ctx: ToolContext) {
+export function createCreateMcpServerHandler(baseCtx: ToolContext) {
   return async (args: CreateMcpServerInput): Promise<ToolTextResult> => {
-    if (!ctx.rateLimiters.mutate.tryConsume(ctx.rateLimitKey)) {
-      return textResult(rateLimitExceededMarkdown("mutate"), { isError: true, ctx });
+    if (!baseCtx.rateLimiters.mutate.tryConsume(baseCtx.rateLimitKey)) {
+      return textResult(rateLimitExceededMarkdown("mutate"), { isError: true, ctx: baseCtx });
     }
+
+    // owner_token argument (conversation-carried identity) wins over this
+    // request's own auto-issued identity — see context.ts resolveOwnerIdentity.
+    const ctx = await resolveOwnerIdentity(baseCtx, args.owner_token);
 
     const job = await ctx.repos.queue.enqueue({
       userId: ctx.userId,
