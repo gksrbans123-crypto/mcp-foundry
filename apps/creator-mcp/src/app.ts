@@ -29,6 +29,31 @@ const methodNotAllowedBody = {
 };
 
 /**
+ * Diagnostic for the PlayMCP identity-fragmentation investigation: with
+ * DEBUG_LOG_HEADERS=1 set, every inbound request logs its header names plus a
+ * truncated value preview, so we can see whether the PlayMCP gateway forwards
+ * any per-user identifier (a user id header, a stable session header, …) that
+ * verify() could adopt as a stable identity — without users typing anything.
+ * Values are truncated so full credentials never land in the logs; we only
+ * need to see WHICH header exists and whether its value is stable across
+ * calls. Off by default; remove the env var after the investigation.
+ */
+const DEBUG_VALUE_PREVIEW_CHARS = 24;
+
+function formatHeadersForDebug(headers: Record<string, string | string[] | undefined>): string {
+  return Object.entries(headers)
+    .map(([name, raw]) => {
+      const value = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
+      const preview =
+        value.length > DEBUG_VALUE_PREVIEW_CHARS
+          ? `${value.slice(0, DEBUG_VALUE_PREVIEW_CHARS)}…(len ${value.length})`
+          : value;
+      return `${name}=${preview}`;
+    })
+    .join(" | ");
+}
+
+/**
  * Builds the Creator MCP Express app (plan §2a, §9): a single stateless
  * Streamable HTTP endpoint at POST /mcp (`sessionIdGenerator: undefined`).
  * A fresh McpServer + transport pair is created per request — mirroring the
@@ -40,6 +65,13 @@ export function createApp(config: CreatorAppConfig): Express {
   const issuanceLimiter = config.issuanceLimiter ?? createIssuanceLimiter();
   const app = express();
   app.use(express.json());
+  if (process.env.DEBUG_LOG_HEADERS === "1") {
+    // Before auth on purpose: we want the dump even for requests auth would 401/429.
+    app.use((req, _res, next) => {
+      console.info(`[debug-headers] ${req.method} ${req.path} :: ${formatHeadersForDebug(req.headers)}`);
+      next();
+    });
+  }
   app.use(createAuthMiddleware(config.authn, issuanceLimiter));
 
   app.post("/mcp", async (req, res) => {
