@@ -11,7 +11,7 @@ const envSchema = z.object({
   CREATOR_PORT: z.coerce.number().int().positive().default(3001),
   RUNTIME_PORT: z.coerce.number().int().positive().default(3002),
   DASHBOARD_PORT: z.coerce.number().int().positive().default(3000),
-  GENERATOR_MODEL: z.string().min(1).default("claude-opus-4-8"),
+  GENERATOR_MODEL: z.string().min(1).default("claude-sonnet-5"),
   // Optional process-wide egress allowlist (comma-separated hostnames). Empty
   // (the default) means "no extra restriction beyond each spec's own declared
   // hosts" — any public host a generated spec targets is reachable, while the

@@ -15,7 +15,7 @@ describe("loadEnv", () => {
     expect(env.CREATOR_PORT).toBe(3001);
     expect(env.RUNTIME_PORT).toBe(3002);
     expect(env.DASHBOARD_PORT).toBe(3000);
-    expect(env.GENERATOR_MODEL).toBe("claude-opus-4-8");
+    expect(env.GENERATOR_MODEL).toBe("claude-sonnet-5");
   });
 
   it("throws a descriptive error listing every missing required variable", () => {
