@@ -69,7 +69,11 @@ export function createCreateMcpServerHandler(baseCtx: ToolContext) {
         "완성되면 **바로 연결해 쓸 수 있는 공개 URL**이 나와요. 다만 **완성 알림이 자동으로 오지는 않으니**, 사용자에게 \"약 **20~30초 뒤에** 다시 '완료됐어?'라고 물어봐 주세요\"라고 안내해 주세요.",
         `_(어시스턴트 지시: \"잠시 후 URL을 알려드리겠다\"처럼 예고하지 마세요 — 생성 완료는 push 알림이 없습니다. 사용자가 다시 물어볼 때 \`get_job_status\`(작업 ID \`${job.id}\`)를 호출해 공개 URL을 전달하세요. 지금 즉시 호출하면 아직 생성 중(building)일 수 있습니다.)_`,
       ].join("\n"),
-      { ctx },
+      // announceToken: the ONLY response that surfaces the issued token — this
+      // token owns the job/server, so it's the one the assistant must reuse as
+      // owner_token (announcing fresh tokens on every tool response misled the
+      // assistant into passing a token that owned nothing).
+      { ctx, announceToken: true },
     );
   };
 }

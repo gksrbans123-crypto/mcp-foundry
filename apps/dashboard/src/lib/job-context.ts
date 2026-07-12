@@ -1,8 +1,7 @@
-import { findJobById, findServerById, findUserByAuthRef, listJobsByServer, listStatusEventsByJob } from "@mcp-foundry/db";
+import { findJobById, findServerById, listJobsByServer, listStatusEventsByJob } from "@mcp-foundry/db";
 import type { Job, Server, StatusEvent } from "@mcp-foundry/shared";
 import { getPool, logDashboardDataError } from "./db-client";
 import { findMockJob, findMockServer, findMockStatusEvents, MOCK_JOBS } from "./mock-data";
-import { hashOwnerToken } from "./token";
 
 export interface JobContext {
   source: "db" | "mock";
@@ -28,14 +27,16 @@ function mockJobContext(jobId: string): JobContext {
 }
 
 /**
- * Loads a job's timeline scoped to the owner token that requested it — a job
- * belonging to a different user is reported identically to a nonexistent
- * one (`forbidden`/absence collapse to the same "not found" UI copy) so the
- * page never confirms or denies another user's job IDs exist.
+ * Loads a job's timeline by its id alone — capability-based access, matching
+ * the creator MCP tools (see apps/creator-mcp tools/get-job-status.ts): a job
+ * id is an unguessable UUIDv4 that is only ever handed to its creator, and
+ * PlayMCP's no-auth hosting mints a fresh anonymous token per call, so the
+ * "진행 상황 보기" link's token routinely differs from the job's owner. An
+ * owner check here would 404 the creator's own job.
  */
 export async function loadJobContext(
   jobId: string,
-  rawToken: string,
+  _rawToken: string,
   options: { forceMock?: boolean } = {},
 ): Promise<JobContext> {
   if (options.forceMock) {
@@ -48,15 +49,9 @@ export async function loadJobContext(
   }
 
   try {
-    const authRef = hashOwnerToken(rawToken);
-    const user = await findUserByAuthRef(pool, authRef);
-    if (!user) {
-      return { source: "db", job: null, statusEvents: [], server: null, forbidden: false };
-    }
-
     const job = await findJobById(pool, jobId);
-    if (!job || job.userId !== user.id) {
-      return { source: "db", job: null, statusEvents: [], server: null, forbidden: Boolean(job) };
+    if (!job) {
+      return { source: "db", job: null, statusEvents: [], server: null, forbidden: false };
     }
 
     const [statusEvents, server] = await Promise.all([
@@ -67,6 +62,26 @@ export async function loadJobContext(
   } catch (error) {
     logDashboardDataError("loadJobContext", error);
     return mockJobContext(jobId);
+  }
+}
+
+/**
+ * Capability-based server lookup for the detail page: resolves a server by
+ * its unguessable id regardless of which owner token rides on the URL (same
+ * rationale as loadJobContext above — PlayMCP no-auth links routinely carry a
+ * token that doesn't own the server they point at).
+ */
+export async function loadServerById(serverId: string, source: "db" | "mock"): Promise<Server | null> {
+  if (source === "mock") {
+    return findMockServer(serverId) ?? null;
+  }
+  const pool = getPool();
+  if (!pool) return null;
+  try {
+    return await findServerById(pool, serverId);
+  } catch (error) {
+    logDashboardDataError("loadServerById", error);
+    return null;
   }
 }
 

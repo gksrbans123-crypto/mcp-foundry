@@ -4,7 +4,7 @@ import { DemoBadge } from "../../../components/DemoBadge";
 import { Pipeline } from "../../../components/Pipeline";
 import { ServerActions } from "../../../components/ServerActions";
 import { TokenSessionBridge } from "../../../components/TokenSessionBridge";
-import { loadJobsForServer } from "../../../lib/job-context";
+import { loadJobsForServer, loadServerById } from "../../../lib/job-context";
 import { loadOwnerContext } from "../../../lib/owner-context";
 import { resolveOwnerToken } from "../../../lib/owner-token";
 import { derivePipeline } from "../../../lib/pipeline";
@@ -36,7 +36,11 @@ export default async function ServerDetailPage({ params, searchParams }: ServerD
   }
 
   const context = await loadOwnerContext(token, { forceMock });
-  const server = context.servers.find((candidate) => candidate.id === serverId) ?? null;
+  // Capability fallback: the id is the gate (see lib/job-context.ts) — a link
+  // whose token doesn't own this server must still open it.
+  const server =
+    context.servers.find((candidate) => candidate.id === serverId) ??
+    (await loadServerById(serverId, context.source));
 
   const backHref = `/servers?token=${encodeURIComponent(token)}${demoSuffix}`;
 

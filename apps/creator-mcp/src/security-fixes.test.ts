@@ -76,19 +76,14 @@ describe("HIGH-2: anonymous mutate calls share one rate-limit budget per address
     // the previous test (same process, same describe block) — an
     // authenticated user reusing their own saved token must be unaffected,
     // since their calls are keyed by their stable userId, not the address.
-    const bootstrap = new Client({ name: "real-user-bootstrap", version: "0.0.1" });
-    const bootstrapTransport = new StreamableHTTPClientTransport(new URL(mcpUrl));
-    await bootstrap.connect(bootstrapTransport);
-    const bootstrapResult = await bootstrap.callTool({ name: "get_dashboard_link", arguments: {} });
-    await bootstrap.close();
-    const bootstrapContent = bootstrapResult.content as Array<{ type: string; text?: string }>;
-    const text = bootstrapContent.find((c) => c.type === "text")?.text ?? "";
-    const token = [...text.matchAll(/`([^`]+)`/g)].map((m) => m[1]!).find((v) => v.includes("."));
-    expect(token).toBeDefined();
+    // Any non-empty token is a stable namespace identity (custom-header auth),
+    // so the test presents its own saved value directly — no bootstrap call
+    // needed (read-only tools no longer announce their auto-issued tokens).
+    const token = "real-user-saved-token.for-rate-limit-test";
 
     const client = new Client({ name: "real-user", version: "0.0.1" });
     const transport = new StreamableHTTPClientTransport(new URL(mcpUrl), {
-      requestInit: { headers: { "X-Owner-Token": token! } },
+      requestInit: { headers: { "X-Owner-Token": token } },
     });
     await client.connect(transport);
     const result = await client.callTool({

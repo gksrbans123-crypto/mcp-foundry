@@ -63,14 +63,23 @@ describe("MCP round trip over Streamable HTTP (stateless)", () => {
     await client.close();
   });
 
-  it("auto-issues an owner token for a client with no prior credential", async () => {
+  it("announces the auto-issued owner token on create_mcp_server only (not on read-only tools)", async () => {
     const client = new Client({ name: "roundtrip-test-client-fresh", version: "0.0.1" });
     const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
     await client.connect(transport);
 
-    const result = await client.callTool({ name: "get_dashboard_link", arguments: {} });
-    const content = result.content as Array<{ type: string; text?: string }>;
-    expect(content[0]?.text).toContain("New owner token issued");
+    // Read-only tools stay quiet: their per-call fresh token owns nothing, and
+    // announcing it misled assistants into passing it as owner_token.
+    const dashboard = await client.callTool({ name: "get_dashboard_link", arguments: {} });
+    const dashboardText = (dashboard.content as Array<{ type: string; text?: string }>)[0]?.text ?? "";
+    expect(dashboardText).not.toContain("New owner token issued");
+
+    const created = await client.callTool({
+      name: "create_mcp_server",
+      arguments: { spec_text: "A tool that reports the weather." },
+    });
+    const createdText = (created.content as Array<{ type: string; text?: string }>)[0]?.text ?? "";
+    expect(createdText).toContain("New owner token issued");
 
     await client.close();
   });

@@ -70,9 +70,14 @@ function tokenNoticeMarkdown(token: string): string {
  */
 export function textResult(
   markdown: string,
-  options: { isError?: boolean; ctx?: ToolContext } = {},
+  options: { isError?: boolean; ctx?: ToolContext; announceToken?: boolean } = {},
 ): ToolTextResult {
-  const notice = options.ctx?.isNewToken ? tokenNoticeMarkdown(options.ctx.token) : "";
+  // Token notice is opt-in (create_mcp_server only). Every anonymous call
+  // auto-issues a token, so announcing it on every response floods the
+  // conversation with tokens that own NOTHING — the assistant then passes one
+  // of those to owner_token and list_my_servers comes back empty. The only
+  // token worth announcing is the one that just became a server's owner.
+  const notice = options.announceToken && options.ctx?.isNewToken ? tokenNoticeMarkdown(options.ctx.token) : "";
   return {
     content: [{ type: "text", text: `${notice}${markdown}` }],
     ...(options.isError ? { isError: true } : {}),
