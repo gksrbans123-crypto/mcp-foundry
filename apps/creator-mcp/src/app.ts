@@ -66,8 +66,25 @@ export function createApp(config: CreatorAppConfig): Express {
   const app = express();
   app.use(express.json());
   if (process.env.DEBUG_LOG_HEADERS === "1") {
-    // Before auth on purpose: we want the dump even for requests auth would 401/429.
+    // PlayMCP's console exposes no runtime log viewer, so stdout alone is not
+    // retrievable — keep the last requests in an in-memory ring buffer and
+    // serve them over GET /debug/headers (routed by deploy/all-in-one's proxy).
+    // Registered BEFORE auth on purpose: the dump must work with no credential
+    // and must capture requests auth would 401/429. Values stay truncated
+    // (formatHeadersForDebug), so no full credential is ever exposed.
+    const DEBUG_RING_SIZE = 20;
+    const recentRequests: Array<{ at: string; method: string; path: string; headers: string }> = [];
+    app.get("/debug/headers", (_req, res) => {
+      res.json({ note: "values truncated to 24 chars; DEBUG_LOG_HEADERS diagnostic", requests: recentRequests });
+    });
     app.use((req, _res, next) => {
+      recentRequests.push({
+        at: new Date().toISOString(),
+        method: req.method,
+        path: req.path,
+        headers: formatHeadersForDebug(req.headers),
+      });
+      if (recentRequests.length > DEBUG_RING_SIZE) recentRequests.shift();
       console.info(`[debug-headers] ${req.method} ${req.path} :: ${formatHeadersForDebug(req.headers)}`);
       next();
     });

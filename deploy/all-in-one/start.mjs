@@ -150,6 +150,9 @@ function waitForPort(port, timeoutMs = 30000) {
 
 function targetFor(url) {
   if (url === "/mcp" || url.startsWith("/mcp/") || url.startsWith("/mcp?")) return CREATOR_PORT;
+  // Diagnostic endpoint (creator-mcp serves it only when DEBUG_LOG_HEADERS=1;
+  // otherwise creator-mcp has no such route and this 404s harmlessly).
+  if (url.startsWith("/debug/")) return CREATOR_PORT;
   if (url.startsWith("/s/") || url === "/healthz" || url.startsWith("/healthz?")) return RUNTIME_PORT;
   return DASHBOARD_PORT;
 }
