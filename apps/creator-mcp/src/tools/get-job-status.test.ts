@@ -90,7 +90,7 @@ describe("get_job_status handler", () => {
     expect(result.content[0].text).toContain("만드는 중");
   });
 
-  it("returns not-found for a job owned by a different user", async () => {
+  it("resolves a job by its id from a different session (capability-based — PlayMCP no-auth fragments identity per call)", async () => {
     const { ctx, repos } = buildCtx();
     const now = new Date().toISOString();
     repos.seedJob({
@@ -114,7 +114,7 @@ describe("get_job_status handler", () => {
 
     const result = await handler({ job_id: "job-3" });
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/not found/);
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toContain("만드는 중");
   });
 });

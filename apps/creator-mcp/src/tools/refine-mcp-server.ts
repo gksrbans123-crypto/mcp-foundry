@@ -17,8 +17,11 @@ export function createRefineMcpServerHandler(ctx: ToolContext) {
       return textResult(rateLimitExceededMarkdown("mutate"), { isError: true, ctx });
     }
 
+    // Capability-based access by unguessable server_id (see get-job-status.ts):
+    // identity is fragmented per call under PlayMCP no-auth, so knowledge of
+    // the id authorizes the rebuild rather than an owner match.
     const server = await ctx.repos.servers.findById(args.server_id);
-    if (!server || server.userId !== ctx.userId) {
+    if (!server) {
       return textResult(notFoundMarkdown("Server", args.server_id), { isError: true, ctx });
     }
 

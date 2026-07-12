@@ -60,15 +60,15 @@ describe("delete_server handler", () => {
     expect(result.content[0].text).toMatch(/Already deleted/);
   });
 
-  it("returns not-found for a server owned by a different user (no ownership leak)", async () => {
+  it("deletes a server by its id from a different session (capability-based — PlayMCP no-auth fragments identity per call)", async () => {
     const { ctx, repos } = buildCtx();
     repos.seedServer(buildServer({ userId: "someone-else" }));
     const handler = createDeleteServerHandler(ctx);
 
     const result = await handler({ server_id: "server-1" });
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/not found/);
+    expect(result.isError).toBeUndefined();
+    expect(result.content[0].text).toMatch(/Delete job queued/);
   });
 
   it("returns not-found for a nonexistent server id", async () => {

@@ -16,8 +16,11 @@ export function createGetServerDetailsHandler(ctx: ToolContext) {
       return textResult(rateLimitExceededMarkdown("query"), { isError: true, ctx });
     }
 
+    // Capability-based access by unguessable server_id (see get-job-status.ts):
+    // PlayMCP's no-auth host fragments identity per call, so we authorize by
+    // knowledge of the id rather than owner match.
     const server = await ctx.repos.servers.findById(args.server_id);
-    if (!server || server.userId !== ctx.userId) {
+    if (!server) {
       return textResult(notFoundMarkdown("Server", args.server_id), { isError: true, ctx });
     }
 

@@ -16,8 +16,12 @@ export function createDeleteServerHandler(ctx: ToolContext) {
       return textResult(rateLimitExceededMarkdown("mutate"), { isError: true, ctx });
     }
 
+    // Capability-based access by unguessable server_id (see get-job-status.ts):
+    // identity is fragmented per call under PlayMCP no-auth, so the creator can
+    // only delete their own server by presenting its id — knowledge of the id
+    // is the gate rather than an owner match.
     const server = await ctx.repos.servers.findById(args.server_id);
-    if (!server || server.userId !== ctx.userId) {
+    if (!server) {
       return textResult(notFoundMarkdown("Server", args.server_id), { isError: true, ctx });
     }
 

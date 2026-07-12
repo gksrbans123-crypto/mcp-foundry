@@ -17,8 +17,15 @@ export function createGetJobStatusHandler(ctx: ToolContext) {
       return textResult(rateLimitExceededMarkdown("query"), { isError: true, ctx });
     }
 
+    // Capability-based access: the job_id (an unguessable UUIDv4) is itself
+    // the authorization, so we do NOT owner-scope this lookup. PlayMCP's
+    // no-auth host mints a fresh anonymous owner token per call (the issued
+    // X-Owner-Token isn't persisted/forwarded across tool calls), so an
+    // owner-scoped check would make every cross-call lookup fail — a user
+    // could never check the status of a job they just created. The id is only
+    // ever returned to the creating session, which is the gate.
     const job = await ctx.repos.jobs.findById(args.job_id);
-    if (!job || job.userId !== ctx.userId) {
+    if (!job) {
       return textResult(notFoundMarkdown("Job", args.job_id), { isError: true, ctx });
     }
 
