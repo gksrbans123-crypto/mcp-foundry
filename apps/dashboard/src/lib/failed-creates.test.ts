@@ -1,6 +1,11 @@
 import type { Job } from "@mcp-foundry/shared";
 import { describe, expect, it } from "vitest";
-import { isOrphanFailedCreate, toFailedCreatePseudoServer } from "./failed-creates";
+import {
+  isOrphanActiveCreate,
+  isOrphanFailedCreate,
+  toActiveCreatePseudoServer,
+  toFailedCreatePseudoServer,
+} from "./failed-creates";
 
 function buildJob(overrides: Partial<Job> = {}): Job {
   return {
@@ -35,6 +40,36 @@ describe("isOrphanFailedCreate", () => {
   it("excludes non-create jobs and non-failed stages", () => {
     expect(isOrphanFailedCreate(buildJob({ type: "refine" }))).toBe(false);
     expect(isOrphanFailedCreate(buildJob({ stage: "building", status: "building" }))).toBe(false);
+  });
+});
+
+describe("isOrphanActiveCreate", () => {
+  it("matches an in-flight create job that has no server row yet", () => {
+    expect(isOrphanActiveCreate(buildJob({ stage: "queued", status: "queued", error: null }))).toBe(true);
+    expect(isOrphanActiveCreate(buildJob({ stage: "generating", status: "generating", error: null }))).toBe(true);
+  });
+
+  it("excludes failed/done stages and jobs that already have a server row", () => {
+    expect(isOrphanActiveCreate(buildJob())).toBe(false); // stage: failed
+    expect(isOrphanActiveCreate(buildJob({ stage: "active", status: "active", error: null }))).toBe(false);
+    expect(
+      isOrphanActiveCreate(buildJob({ stage: "generating", status: "generating", serverId: "server-1", error: null })),
+    ).toBe(false);
+  });
+
+  it("excludes non-create jobs", () => {
+    expect(isOrphanActiveCreate(buildJob({ type: "refine", stage: "generating", status: "generating" }))).toBe(false);
+  });
+});
+
+describe("toActiveCreatePseudoServer", () => {
+  it("shapes the job as a building Server entry keyed by the job id", () => {
+    const entry = toActiveCreatePseudoServer(buildJob({ stage: "generating", status: "generating", error: null }));
+
+    expect(entry.id).toBe("job-abc12345-6789");
+    expect(entry.status).toBe("building");
+    expect(entry.publicUrl).toBeNull();
+    expect(entry.slug).toBe("요청 job-abc1");
   });
 });
 

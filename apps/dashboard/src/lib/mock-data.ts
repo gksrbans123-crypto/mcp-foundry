@@ -214,6 +214,10 @@ export interface OwnerContext {
   /** Create jobs that terminally failed before a server row existed, shaped
    * as pseudo servers (id = job id) so filters/counts/cards apply unchanged. */
   failedCreates: Server[];
+  /** Create jobs still in flight before a server row exists (queued/generating),
+   * shaped the same way with status "building" so a fresh build shows up
+   * immediately instead of an empty dashboard. */
+  buildingCreates: Server[];
   /** DB reachable but no user matches the given token — a real empty state, distinct from mock fallback. */
   notFound: boolean;
   /** serverId (or failed-create job id) -> pipeline stage states for that entry's latest job. */
@@ -229,7 +233,15 @@ export function buildMockOwnerContext(): OwnerContext {
       )[0] ?? null;
     pipelines[server.id] = derivePipeline(job, job ? findMockStatusEvents(job.id) : []);
   }
-  return { source: "mock", user: MOCK_USER, servers: MOCK_SERVERS, failedCreates: [], notFound: false, pipelines };
+  return {
+    source: "mock",
+    user: MOCK_USER,
+    servers: MOCK_SERVERS,
+    failedCreates: [],
+    buildingCreates: [],
+    notFound: false,
+    pipelines,
+  };
 }
 
 export function findMockJob(jobId: string): Job | null {

@@ -1,7 +1,12 @@
 import type { Job } from "@mcp-foundry/shared";
 import { findUserByAuthRef, listJobsByUser, listServersByUser, listStatusEventsByJob } from "@mcp-foundry/db";
 import { getPool, logDashboardDataError } from "./db-client";
-import { isOrphanFailedCreate, toFailedCreatePseudoServer } from "./failed-creates";
+import {
+  isOrphanActiveCreate,
+  isOrphanFailedCreate,
+  toActiveCreatePseudoServer,
+  toFailedCreatePseudoServer,
+} from "./failed-creates";
 import { buildMockOwnerContext, type OwnerContext } from "./mock-data";
 import { derivePipeline, type StageState } from "./pipeline";
 import { hashOwnerToken } from "./token";
@@ -34,7 +39,15 @@ export async function loadOwnerContext(rawToken: string, options: { forceMock?: 
     const authRef = hashOwnerToken(rawToken);
     const user = await findUserByAuthRef(pool, authRef);
     if (!user) {
-      return { source: "db", user: null, servers: [], failedCreates: [], notFound: true, pipelines: {} };
+      return {
+        source: "db",
+        user: null,
+        servers: [],
+        failedCreates: [],
+        buildingCreates: [],
+        notFound: true,
+        pipelines: {},
+      };
     }
     const [servers, jobs] = await Promise.all([
       listServersByUser(pool, user.id),
@@ -49,10 +62,15 @@ export async function loadOwnerContext(rawToken: string, options: { forceMock?: 
       if (!prev || job.createdAt > prev.createdAt) latestByServer.set(job.serverId, job);
     }
 
-    // Create jobs that died before a server row existed live only in the
-    // jobs table — surface them as failed cards instead of silently hiding.
+    // Create jobs without a server row live only in the jobs table — the row
+    // is inserted at the building stage, and a failed create may never get
+    // one. Surface both kinds as cards instead of silently hiding: failed
+    // orphans under "실패", in-flight orphans under "진행중" (so the dashboard
+    // isn't empty during the first stretch of a fresh build).
     const orphanFailedJobs = jobs.filter(isOrphanFailedCreate);
     const failedCreates = orphanFailedJobs.map(toFailedCreatePseudoServer);
+    const orphanActiveJobs = jobs.filter(isOrphanActiveCreate);
+    const buildingCreates = orphanActiveJobs.map(toActiveCreatePseudoServer);
 
     const pipelines: Record<string, StageState[]> = {};
     await Promise.all([
@@ -61,13 +79,13 @@ export async function loadOwnerContext(rawToken: string, options: { forceMock?: 
         const events = job ? await listStatusEventsByJob(pool, job.id) : [];
         pipelines[server.id] = derivePipeline(job, events);
       }),
-      ...orphanFailedJobs.map(async (job) => {
+      ...[...orphanFailedJobs, ...orphanActiveJobs].map(async (job) => {
         const events = await listStatusEventsByJob(pool, job.id);
         pipelines[job.id] = derivePipeline(job, events);
       }),
     ]);
 
-    return { source: "db", user, servers, failedCreates, notFound: false, pipelines };
+    return { source: "db", user, servers, failedCreates, buildingCreates, notFound: false, pipelines };
   } catch (error) {
     logDashboardDataError("loadOwnerContext", error);
     return buildMockOwnerContext();
