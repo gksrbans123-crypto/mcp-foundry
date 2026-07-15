@@ -12,43 +12,6 @@ function hashToken(rawToken: string): string {
   return createHash("sha256").update(rawToken).digest("hex");
 }
 
-/**
- * Reads the claims of a JWT payload without verifying its signature. Used only
- * to pull a stable subject out of an OAuth Bearer token (PlayMCP forwards the
- * kauth-issued access token) so identity survives token rotation — a rotated
- * JWT keeps the same `sub`, whereas hashing the whole token would change. The
- * signature is intentionally NOT checked here: the token arrives from PlayMCP
- * over the authenticated connection, and this identity is a namespace key, not
- * a security boundary (generated servers are public; server_id access is
- * capability-based). Returns null for anything that isn't a 3-part JWT.
- */
-function readJwtSubject(token: string): { sub: string; iss?: string } | null {
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const claims = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as unknown;
-    if (typeof claims !== "object" || claims === null) return null;
-    const { sub, iss } = claims as { sub?: unknown; iss?: unknown };
-    if (typeof sub !== "string" || sub.length === 0) return null;
-    return { sub, iss: typeof iss === "string" ? iss : undefined };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Maps any presented credential to the stable lookup key used for identity:
- * an OAuth Bearer JWT resolves to its issuer+subject (rotation-stable), while
- * an opaque token (auto-issued signed token OR a user-chosen X-Owner-Token
- * value) is hashed whole. Both go through sha256 so the stored authRef never
- * contains a raw secret.
- */
-function deriveAuthRef(token: string): string {
-  const jwt = readJwtSubject(token);
-  if (jwt) return hashToken(`oauth-sub:${jwt.iss ?? ""}:${jwt.sub}`);
-  return hashToken(token);
-}
-
 export interface SignedOwnerTokenConfig {
   secret: string;
   users: CreatorUserRepo;
@@ -89,7 +52,7 @@ export function createSignedOwnerTokenAuthN(config: SignedOwnerTokenConfig): Aut
 
     async verify(token) {
       if (!token) return null;
-      const user = await users.findOrCreateByAuthRef(deriveAuthRef(token));
+      const user = await users.findOrCreateByAuthRef(hashToken(token));
       return user.id;
     },
   };

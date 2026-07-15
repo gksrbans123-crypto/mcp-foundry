@@ -3,22 +3,6 @@ import type { TokenBucketLimiter } from "../rate-limit/token-bucket.js";
 import type { AuthN } from "./authn.js";
 
 const OWNER_TOKEN_HEADER = "x-owner-token";
-const AUTHORIZATION_HEADER = "authorization";
-
-/**
- * Extracts the token from an `Authorization: Bearer <token>` header — the
- * standard MCP OAuth credential. PlayMCP handles the Kakao (kauth) login +
- * consent on its side and, once authorized, forwards the access token here on
- * every request; we map it to a stable identity in AuthN.verify (see
- * signed-owner-token.ts, which reads a JWT `sub` when present so identity
- * survives token rotation).
- */
-function extractBearerToken(header: string | string[] | undefined): string | undefined {
-  const value = Array.isArray(header) ? header[0] : header;
-  if (!value) return undefined;
-  const match = /^Bearer\s+(.+)$/i.exec(value.trim());
-  return match?.[1]?.trim() || undefined;
-}
 
 export interface CreatorAuth {
   userId: string;
@@ -70,12 +54,10 @@ function clientIpOf(req: Request): string {
  */
 export function createAuthMiddleware(authn: AuthN, issuanceLimiter: TokenBucketLimiter) {
   return async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
-    // Prefer an OAuth Bearer token (PlayMCP OAuth / Kakao login) over the
-    // custom X-Owner-Token header; fall back to auto-issue when neither is
-    // present (a client that authenticated via neither path).
+    // X-Owner-Token custom header only (OAuth was dropped — see
+    // docs/g-a-oauth-decision.md); no header at all falls through to auto-issue.
     const ownerHeader = req.headers[OWNER_TOKEN_HEADER];
-    const ownerToken = Array.isArray(ownerHeader) ? ownerHeader[0] : ownerHeader;
-    const presentedToken = extractBearerToken(req.headers[AUTHORIZATION_HEADER]) ?? ownerToken;
+    const presentedToken = Array.isArray(ownerHeader) ? ownerHeader[0] : ownerHeader;
 
     if (!presentedToken) {
       const ip = clientIpOf(req);

@@ -61,33 +61,6 @@ describe("createSignedOwnerTokenAuthN", () => {
     expect(await otherVerifier.verify(issued.token)).toBe(issued.userId);
   });
 
-  const makeJwt = (claims: Record<string, unknown>) => {
-    const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
-    return `${b64({ alg: "RS256", typ: "JWT" })}.${b64(claims)}.signature-not-verified`;
-  };
-
-  it("resolves an OAuth Bearer JWT to a stable identity by its subject (survives token rotation)", async () => {
-    const repos = createMemoryRepos();
-    const authn = createSignedOwnerTokenAuthN({ secret: SECRET, users: repos.users });
-
-    // Same user (sub), two different JWTs (rotated signature/exp) → same identity.
-    const first = await authn.verify(makeJwt({ iss: "kauth", sub: "kakao-42", exp: 1 }));
-    const rotated = await authn.verify(makeJwt({ iss: "kauth", sub: "kakao-42", exp: 2 }));
-
-    expect(first).not.toBeNull();
-    expect(first).toBe(rotated);
-  });
-
-  it("maps different JWT subjects to different identities", async () => {
-    const repos = createMemoryRepos();
-    const authn = createSignedOwnerTokenAuthN({ secret: SECRET, users: repos.users });
-
-    const a = await authn.verify(makeJwt({ iss: "kauth", sub: "kakao-1" }));
-    const b = await authn.verify(makeJwt({ iss: "kauth", sub: "kakao-2" }));
-
-    expect(a).not.toBe(b);
-  });
-
   it("rejects undefined/empty tokens without throwing", async () => {
     const repos = createMemoryRepos();
     const authn = createSignedOwnerTokenAuthN({ secret: SECRET, users: repos.users });

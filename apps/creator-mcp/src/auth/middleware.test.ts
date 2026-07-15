@@ -67,37 +67,18 @@ describe("createAuthMiddleware", () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it("extracts and verifies an Authorization: Bearer token (PlayMCP OAuth), preferring it over auto-issue", async () => {
+  it("ignores an Authorization header (OAuth dropped) and auto-issues instead", async () => {
     const authn: AuthN = {
-      issueToken: vi.fn(),
-      verify: vi.fn().mockResolvedValue("oauth-user"),
+      issueToken: vi.fn().mockResolvedValue({ userId: "user-1", token: "new-token" }),
+      verify: vi.fn(),
     };
     const middleware = createAuthMiddleware(authn, unlimitedIssuanceLimiter());
     const { req, res, next } = buildReqRes({ authorization: "Bearer header.payload.sig" });
 
     await middleware(req, res, next);
 
-    expect(authn.verify).toHaveBeenCalledWith("header.payload.sig");
-    expect(authn.issueToken).not.toHaveBeenCalled();
-    expect(res.locals.creatorAuth).toEqual({
-      userId: "oauth-user",
-      token: "header.payload.sig",
-      rateLimitKey: "oauth-user",
-    });
-    expect(next).toHaveBeenCalledOnce();
-  });
-
-  it("prefers the Authorization: Bearer token over X-Owner-Token when both are present", async () => {
-    const authn: AuthN = {
-      issueToken: vi.fn(),
-      verify: vi.fn().mockResolvedValue("oauth-user"),
-    };
-    const middleware = createAuthMiddleware(authn, unlimitedIssuanceLimiter());
-    const { req, res, next } = buildReqRes({ authorization: "Bearer bearer-tok", headerValue: "owner-tok" });
-
-    await middleware(req, res, next);
-
-    expect(authn.verify).toHaveBeenCalledWith("bearer-tok");
+    expect(authn.verify).not.toHaveBeenCalled();
+    expect(authn.issueToken).toHaveBeenCalledOnce();
     expect(next).toHaveBeenCalledOnce();
   });
 
